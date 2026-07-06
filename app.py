@@ -259,19 +259,39 @@ elif menu == "Absensi Terpusat (Rekap)":
     st.dataframe(st.session_state.absensi, use_container_width=True)
 
 elif menu == "Payroll & Penggajian":
+   elif menu == "Payroll & Penggajian":
     st.markdown("<div class='main-header'>💸 Sistem Payroll & Pencairan Kompensasi</div>", unsafe_allow_html=True)
-    with st.form("form_payroll", clear_on_submit=True):
-        tgl_bayar = st.date_input("Tanggal Payroll", datetime.date.today())
-        bulan_pilih = st.selectbox("Periode Pembayaran", ["Januari 2026", "Februari 2026", "Maret 2026", "April 2026", "Mei 2026", "Juni 2026", "Juli 2026", "Agustus 2026", "September 2026", "Oktober 2026", "November 2026", "Desember 2026"])
-        karyawan_pilih = st.selectbox("Pilih Karyawan", st.session_state.karyawan["Nama Karyawan"].tolist() if not st.session_state.karyawan.empty else [""])
-        hari_kerja_sebulan = st.number_input("Target Hari Kerja", min_value=1, value=25)
-        
-        db_absen = st.session_state.absensi[(st.session_state.absensi["Nama Karyawan"] == karyawan_pilih) & (st.session_state.absensi["Bulan/Tahun"] == bulan_pilih) & (st.session_state.absensi["Status Kehadiran"] == "Hadir")]
-        total_masuk = len(db_absen)
-        st.write(f"ℹ️ **Kehadiran Berdasarkan Absen GPS:** {total_masuk} Hari")
-        
-        if st.form_submit_button("Otorisasi & Cairkan Gaji"):
-            st.success("Payroll sukses diproses!")
+    
+    # PERBAIKAN 1: Antispasi jika database karyawan di Google Sheets masih kosong
+    if "Nama Karyawan" in st.session_state.karyawan.columns and not st.session_state.karyawan.empty:
+        list_karyawan_payroll = st.session_state.karyawan["Nama Karyawan"].tolist()
+    else:
+        list_karyawan_payroll = []
+
+    if not list_karyawan_payroll:
+        st.warning("⚠️ Data karyawan belum tersedia di database Google Sheets. Silakan isi Master Data Karyawan terlebih dahulu.")
+    else:
+        # PERBAIKAN 2: Memastikan form dan st.form_submit_button terstruktur dengan benar
+        with st.form("form_payroll", clear_on_submit=True):
+            tgl_bayar = st.date_input("Tanggal Payroll", datetime.date.today())
+            bulan_pilih = st.selectbox("Periode Pembayaran", ["Januari 2026", "Februari 2026", "Maret 2026", "April 2026", "Mei 2026", "Juni 2026", "Juli 2026", "Agustus 2026", "September 2026", "Oktober 2026", "November 2026", "Desember 2026"])
+            karyawan_pilih = st.selectbox("Pilih Karyawan", list_karyawan_payroll)
+            hari_kerja_sebulan = st.number_input("Target Hari Kerja", min_value=1, value=25)
+            
+            # Hitung rekap absensi secara otomatis
+            if not st.session_state.absensi.empty and "Nama Karyawan" in st.session_state.absensi.columns:
+                db_absen = st.session_state.absensi[(st.session_state.absensi["Nama Karyawan"] == karyawan_pilih) & (st.session_state.absensi["Bulan/Tahun"] == bulan_pilih) & (st.session_state.absensi["Status Kehadiran"] == "Hadir")]
+                total_masuk = len(db_absen)
+            else:
+                total_masuk = 0
+                
+            st.info(f"ℹ️ **Kehadiran Berdasarkan Absen GPS:** {total_masuk} Hari")
+            
+            # Tombol submit WAJIB berada di dalam blok "with st.form"
+            tombol_payroll = st.form_submit_button("Otorisasi & Cairkan Gaji")
+            
+            if tombol_payroll:
+                st.success(f"✅ Payroll untuk {karyawan_pilih} periode {bulan_pilih} sukses diproses dan diotorisasi!")
 
 elif menu == "Kelola Pengumuman":
     st.markdown("<div class='main-header'>✍️ Kelola Pengumuman Internal Kantor</div>", unsafe_allow_html=True)
