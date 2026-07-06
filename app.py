@@ -1,44 +1,81 @@
 import streamlit as st
 import pandas as pd
 import gspread
-from oauth2client.service_account import ServiceAccountCredentials
 import json
+import datetime
+import math
+from oauth2client.service_account import ServiceAccountCredentials
+from streamlit_js_eval import streamlit_js_eval
 
-# Setup Konfigurasi Google Sheets via Streamlit Secrets
+# 1. KONFIGURASI GOOGLE SHEETS
 def get_gspread_client():
-    # Ambil creds dari Secrets (lihat cara pasang di bawah)
     creds_dict = json.loads(st.secrets["gcp_service_account"])
     scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
     creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
     return gspread.authorize(creds)
 
-# Fungsi Membaca Data
+# Fungsi Ambil Data
 @st.cache_data(ttl=60)
 def load_data(sheet_name):
     client = get_gspread_client()
-    spreadsheet = client.open("Database_PT_Tangguh")
-    ws = spreadsheet.worksheet(sheet_name)
+    ws = client.open("Database_PT_Tangguh").worksheet(sheet_name)
     return pd.DataFrame(ws.get_all_records())
 
-# Fungsi Menyimpan Data (Absensi)
-def save_absensi(data):
-    client = get_gspread_client()
-    spreadsheet = client.open("Database_PT_Tangguh")
-    ws = spreadsheet.worksheet("Absensi")
-    ws.append_row(data)
+# 2. LOGIKA APLIKASI
+st.set_page_config(page_title="PT Tangguh Cahaya Pratama", layout="wide")
+st.title("✨ Portal PT Tangguh Cahaya Pratama")
 
-# Tampilan Aplikasi
-st.title("✨ Portal PT Tangguh")
-menu = st.sidebar.selectbox("Menu:", ["Presensi GPS", "Lihat Absensi"])
+# Autentikasi Admin
+PIN = "KOLIP_CANTIK_0987654321"
+if 'logged_in' not in st.session_state: st.session_state.logged_in = False
 
-if menu == "Presensi GPS":
-    st.subheader("📍 Presensi Mandiri")
-    nama = st.text_input("Nama Lengkap:")
-    if st.button("Kirim Absensi"):
-        # Data contoh (ganti dengan koordinat asli nanti)
-        save_absensi(["6 Juli 2026", nama, "Hadir", "08:00", "17:00", "Kantor", "GPS"])
-        st.success("Data berhasil tersimpan!")
+# Sidebar Menu
+role = st.sidebar.radio("Masuk Sebagai:", ["Karyawan", "Admin"])
+if role == "Admin":
+    pin_input = st.sidebar.text_input("Masukkan PIN Admin:", type="password")
+    if pin_input == PIN: st.session_state.logged_in = True
+    else: st.sidebar.error("PIN Salah!")
 
-elif menu == "Lihat Absensi":
-    st.subheader("📋 Log Absensi")
-    st.dataframe(load_data("Absensi"))
+# --- MENU KARYAWAN ---
+if role == "Karyawan":
+    menu = st.sidebar.selectbox("Menu Karyawan:", ["📢 Pengumuman", "📍 Presensi GPS"])
+    if menu == "📢 Pengumuman":
+        st.subheader("📢 Informasi Terbaru")
+        st.dataframe(load_data("Pengumuman"))
+    
+    elif menu == "📍 Presensi GPS":
+        st.subheader("📍 Presensi Mandiri")
+        loc = streamlit_js_eval(data_container_name='geolocation', key='geo')
+        if st.button("Kirim Absensi"):
+            client = get_gspread_client()
+            ws = client.open("Database_PT_Tangguh").worksheet("Absensi")
+            ws.append_row([str(datetime.datetime.now()), "User", "Hadir", "GPS"])
+            st.success("Absensi terkirim!")
+
+# --- MENU ADMIN ---
+elif role == "Admin" and st.session_state.logged_in:
+    menu = st.sidebar.selectbox("Menu Admin:", ["📊 Dashboard", "💸 Laporan Keuangan", "📍 Kelola Lokasi", "📑 Kasbon"])
+    
+    if menu == "📊 Dashboard":
+        st.subheader("📊 Dashboard Executive")
+        st.write("Pantau operasional perusahaan Anda di sini.")
+        st.dataframe(load_data("Absensi"))
+        
+    elif menu == "💸 Laporan Keuangan":
+        st.subheader("💸 Laporan Cash Flow")
+        st.dataframe(load_data("CashFlow"))
+        
+    elif menu == "📍 Kelola Lokasi":
+        st.subheader("📍 Atur Titik Koordinat Klien")
+        with st.form("lokasi_baru"):
+            nama = st.text_input("Nama Lokasi:")
+            lat = st.number_input("Latitude:")
+            lon = st.number_input("Longitude:")
+            if st.form_submit_button("Simpan Lokasi"):
+                client = get_gspread_client()
+                client.open("Database_PT_Tangguh").worksheet("LokasiKlien").append_row([nama, lat, lon])
+                st.success("Lokasi baru ditambahkan!")
+
+    elif menu == "📑 Kasbon":
+        st.subheader("📑 Data Kasbon Karyawan")
+        st.dataframe(load_data("Kasbon"))
