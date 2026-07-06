@@ -6,7 +6,7 @@ import google.generativeai as genai
 from streamlit_js_eval import streamlit_js_eval
 
 # =========================================================================
-# PENGATURAN DATABASE, AI, & MULTI-LOKASI KANTOR KLIEN (RADIUS 20 METER)
+# PENGATURAN DATABASE & KONFIGURASI AI
 # =========================================================================
 SHEETS_URL = "https://docs.google.com/spreadsheets/d/1VDqISHpjg8OWWPzl1NWOcc9V6j_o6Zw2/edit?usp=sharing&ouid=117398658595436431688&rtpof=true&sd=true"
 GEMINI_API_KEY = "AQ.Ab8RN6J6P_ygWhv1BVnR7cZDTwU4F3bhuTPKXHi1BB_ZzUikGg"
@@ -16,16 +16,7 @@ if "PIN_OTORISASI" in st.secrets:
 else:
     PIN_OTORISASI = "2026"
 
-# DAFTAR LOKASI ABSENSI
-KANTOR_KLIEN = {
-    "PT Tangguh Cahaya Pratama (Pusat Kalisari)": (-6.3355, 106.8620),
-    "Kantor Klien A (Contoh Sudirman)": (-6.2146, 106.8215),
-    "Kantor Klien B (Contoh Thamrin)": (-6.1953, 106.8231),
-    "Kantor Klien C (Contoh Kuningan)": (-6.2242, 106.8294)
-}
-
 RADIUS_TOLERANSI_METER = 20.0 
-# =========================================================================
 
 if GEMINI_API_KEY:
     genai.configure(api_key=GEMINI_API_KEY)
@@ -36,7 +27,18 @@ st.set_page_config(
     layout="wide"
 )
 
-# KUSTOMISASI CSS ANTI-TENGGELAM (MEMAKSA KOTAK INPUT BERWARNA PUTIH)
+# =========================================================================
+# INISIALISASI STATE UTAMA & DINAMIS LOKASI KANTOR KLIEN
+# =========================================================================
+if "daftar_lokasi_klien" not in st.session_state:
+    st.session_state.daftar_lokasi_klien = {
+        "PT Tangguh Cahaya Pratama (Pusat Kalisari)": (-6.3355, 106.8620),
+        "Kantor Klien A (Contoh Sudirman)": (-6.2146, 106.8215),
+        "Kantor Klien B (Contoh Thamrin)": (-6.1953, 106.8231),
+        "Kantor Klien C (Contoh Kuningan)": (-6.2242, 106.8294)
+    }
+
+# KUSTOMISASI CSS HIGH-CONTRAST (ANTI KOTAK INPUT HITAM / TULISAN TENGGELAM)
 st.markdown("""
     <style>
         /* Latar Belakang Halaman Utama */
@@ -78,7 +80,7 @@ st.markdown("""
             font-weight: 600 !important;
         }
         
-        /* Memperbaiki tampilan kontainer input Streamlit */
+        /* Memperbaiki tampilan kontainer komponen input Streamlit */
         div[data-baseweb="input"] {
             background-color: #ffffff !important;
             color: #0f172a !important;
@@ -144,7 +146,7 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# Fungsi Hitung Jarak Jangkauan GPS
+# Fungsi Hitung Jarak Jangkauan GPS (Haversine Formula)
 def hitung_jarak_meter(lat1, lon1, lat2, lon2):
     R = 6371000.0 
     phi1 = math.radians(lat1)
@@ -156,7 +158,7 @@ def hitung_jarak_meter(lat1, lon1, lat2, lon2):
     c = 2.0 * math.atan2(math.sqrt(a), math.sqrt(1.0 - a))
     return R * c
 
-# Fungsi Baca Data Sheets via CSV
+# Fungsi Baca Data Sheets via CSV Export URL
 def read_data_via_csv(sheet_name, fallback_cols):
     try:
         csv_url = SHEETS_URL.split("/edit")[0] + f"/gviz/tq?tqx=out:csv&sheet={sheet_name}"
@@ -164,7 +166,7 @@ def read_data_via_csv(sheet_name, fallback_cols):
     except:
         return pd.DataFrame(columns=fallback_cols)
 
-# Sinkronisasi State Awal
+# Sinkronisasi State Awal Database
 if 'karyawan' not in st.session_state:
     st.session_state.karyawan = read_data_via_csv("Data_Karyawan", ["ID Karyawan", "Nama Karyawan", "Nomor Keanggotaan", "Jabatan", "Gaji Pokok", "Tunjangan"])
 if 'cash_flow' not in st.session_state:
@@ -229,7 +231,7 @@ if not st.session_state.logged_in:
                             st.error("❌ Nama atau Nomor Keanggotaan tidak cocok dengan database perusahaan!")
 
 # =========================================================================
-# HALAMAN PANEL SETELAH LOGIN UTAMA
+# HALAMAN PANEL SETELAH LOGIN UTAMA (DASHBOARD MULTI-ROLE)
 # =========================================================================
 else:
     st.sidebar.markdown(f"<div style='font-size: 20px; font-weight: 800; color: #ffffff; margin-bottom: 10px;'>👋 Halo, {st.session_state.user_nama}!</div>", unsafe_allow_html=True)
@@ -256,6 +258,7 @@ else:
             "💸 Manajemen Cash Flow (Ada AI)", 
             "👥 Data Master Karyawan", 
             "📋 Absensi Terpusat (Rekap)", 
+            "📍 Kelola Lokasi Klien", 
             "📑 Kasbon Karyawan", 
             "✍️ Kelola Pengumuman"
         ])
@@ -283,7 +286,7 @@ else:
                 </div>
             """, unsafe_allow_html=True)
 
-    # 2. MENU KARYAWAN: ABSENSI GPS
+    # 2. MENU KARYAWAN: ABSENSI GPS (MEMBACA STATE DINAMIS LOKASI)
     elif menu == "📍 Presensi Rutin Mandiri (GPS)":
         st.markdown("<div class='main-header'>📍 Sistem Presensi Multi-GPS Area Kerja Outsourcing</div>", unsafe_allow_html=True)
         st.markdown(f"<div style='font-size:15px; color:#475569; font-weight: 500;'>Sistem mendeteksi lokasi penugasan secara otomatis (Radius Aman: <b>{RADIUS_TOLERANSI_METER} meter</b>).</div>", unsafe_allow_html=True)
@@ -302,7 +305,8 @@ else:
                 lon_user = lokasi_user['coords']['longitude']
                 st.success(f"📍 GPS Berhasil Mengunci Koordinat: {lat_user}, {lon_user}")
                 
-                for nama_kantor, koordinat in KANTOR_KLIEN.items():
+                # Membaca daftar lokasi secara dinamis dari session_state
+                for nama_kantor, koordinat in st.session_state.daftar_lokasi_klien.items():
                     jarak = hitung_jarak_meter(lat_user, lon_user, koordinat[0], koordinat[1])
                     if jarak <= RADIUS_TOLERANSI_METER and jarak < jarak_terdekat:
                         jarak_terdekat = jarak
@@ -315,7 +319,7 @@ else:
                 if not lokasi_user:
                     st.error("❌ Gagal Absen! Sensor lokasi perangkat Anda belum aktif.")
                 elif lokasi_terdeteksi is None:
-                    st.error(f"❌ Gagal Absen! Anda berada di luar area resmi.")
+                    st.error(f"❌ Gagal Absen! Anda berada di luar area resmi yang didaftarkan.")
                 else:
                     new_row = {
                         "Tanggal": str(datetime.date.today()), 
@@ -360,27 +364,62 @@ else:
         st.write("### 📋 Tabel Database Karyawan Saat Ini")
         st.dataframe(st.session_state.karyawan, use_container_width=True)
 
-    # 4. MENU ADMIN: EXECUTIVE DASHBOARD
+    # 4. MENU ADMIN: KELOLA LOKASI KLIEN (FITUR BARU INPUT DINAMIS)
+    elif menu == "📍 Kelola Lokasi Klien" and akses_admin_sah:
+        st.markdown("<div class='main-header'>📍 Kelola & Tambah Lokasi Kantor Klien</div>", unsafe_allow_html=True)
+        
+        with st.expander("➕ Tambah Titik Koordinat Kantor Baru", expanded=True):
+            with st.form("form_tambah_lokasi", clear_on_submit=True):
+                nama_kantor_baru = st.text_input("Nama Kantor Klien Baru:")
+                
+                col_lat, col_lon = st.columns(2)
+                with col_lat:
+                    latitude_baru = st.number_input("Latitude (Garis Lintang):", format="%.7f", value=0.0)
+                with col_lon:
+                    longitude_baru = st.number_input("Longitude (Garis Bujur):", format="%.7f", value=0.0)
+                
+                st.markdown("<p style='color: #64748b; font-size: 13px;'>💡 <i>Tips: Anda bisa menyalin koordinat ini langsung dari Google Maps (klik kanan pada peta -> salin koordinat).</i></p>", unsafe_allow_html=True)
+                tombol_simpan_lokasi = st.form_submit_button("Simpan Koordinat Kantor 💾", use_container_width=True)
+                
+                if tombol_simpan_lokasi:
+                    if nama_kantor_baru.strip() == "":
+                        st.error("❌ Nama kantor klien tidak boleh kosong!")
+                    elif latitude_baru == 0.0 or longitude_baru == 0.0:
+                        st.error("❌ Titik koordinat Latitude dan Longitude harus diisi dengan benar!")
+                    else:
+                        st.session_state.daftar_lokasi_klien[nama_kantor_baru.strip()] = (latitude_baru, longitude_baru)
+                        st.success(f"🎉 Sukses! Kantor '{nama_kantor_baru}' berhasil didaftarkan ke sistem presensi.")
+                        st.rerun()
+
+        st.write("### 📋 Daftar Titik Lokasi Absensi Aktif")
+        data_tabel_lokasi = []
+        for nama, koor in st.session_state.daftar_lokasi_klien.items():
+            data_tabel_lokasi.append({"Nama Kantor/Klien": nama, "Latitude": koor[0], "Longitude": koor[1]})
+        
+        df_lokasi = pd.DataFrame(data_tabel_lokasi)
+        st.dataframe(df_lokasi, use_container_width=True)
+
+    # 5. MENU ADMIN: EXECUTIVE DASHBOARD
     elif menu == "📊 Dashboard Executive" and akses_admin_sah:
         st.markdown("<div class='main-header'>📊 Dashboard Keuangan</div>", unsafe_allow_html=True)
         st.write("Statistik keuangan arus kas korporat.")
 
-    # 5. MENU ADMIN: CASH FLOW
+    # 6. MENU ADMIN: CASH FLOW
     elif menu == "💸 Manajemen Cash Flow (Ada AI)" and akses_admin_sah:
         st.markdown("<div class='main-header'>💸 Arus Kas Korporat</div>", unsafe_allow_html=True)
         st.dataframe(st.session_state.cash_flow, use_container_width=True)
 
-    # 6. MENU ADMIN: ABSENSI TERPUSAT
+    # 7. MENU ADMIN: ABSENSI TERPUSAT REKAP
     elif menu == "📋 Absensi Terpusat (Rekap)" and akses_admin_sah:
         st.markdown("<div class='main-header'>📋 Log Database Absensi</div>", unsafe_allow_html=True)
         st.dataframe(st.session_state.absensi, use_container_width=True)
 
-    # 7. MENU ADMIN: KASBON KARYAWAN
+    # 8. MENU ADMIN: KASBON KARYAWAN
     elif menu == "📑 Kasbon Karyawan" and akses_admin_sah:
         st.markdown("<div class='main-header'>📑 Jurnal Kasbon Karyawan</div>", unsafe_allow_html=True)
         st.dataframe(st.session_state.kasbon, use_container_width=True)
 
-    # 8. MENU ADMIN: KELOLA PENGUMUMAN
+    # 9. MENU ADMIN: KELOLA PENGUMUMAN
     elif menu == "✍️ Kelola Pengumuman" and akses_admin_sah:
         st.markdown("<div class='main-header'>✍️ Kelola Pengumuman Kantor</div>", unsafe_allow_html=True)
         with st.form("form_buat_pengumuman", clear_on_submit=True):
