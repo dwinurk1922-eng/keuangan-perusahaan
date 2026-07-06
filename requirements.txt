@@ -1,5 +1,5 @@
 streamlit
 pandas
+gpsread
+oauth2client
 streamlit-js-eval
-google-generativeai
-requests
