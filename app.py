@@ -43,7 +43,7 @@ else:
 if "daftar_lokasi_klien" not in st.session_state:
     st.session_state.daftar_lokasi_klien = {
         "PT Tangguh Cahaya Pratama (Pusat Kalisari)": (-6.3355, 106.8620, 8),
-        "RSGM FKG Usakti": (-6.1668, 106.7901, 12),  # Lokasi kedua ditambahkan (Koordinat Grogol & Shift 12 Jam)
+        "RSGM FKG Usakti": (-6.1668, 106.7901, 12),  # Lokasi kedua (Shift 12 Jam)
         "Kantor Klien A (Contoh Sudirman - Shift 12H)": (-6.2146, 106.8215, 12),
         "Kantor Klien B (Contoh Thamrin - Shift 8H)": (-6.1953, 106.8231, 8),
         "Kantor Klien C (Contoh Kuningan - Shift 10H)": (-6.2242, 106.8294, 10)
@@ -234,7 +234,8 @@ else:
                     if jarak <= RADIUS_TOLERANSI_METER and jarak < jarak_terdekat:
                         jarak_terdekat = jarak
                         lokasi_terdeteksi = nama_kantor
-                        durasi_shift_terdeteksi = info_lokasi[2]
+                        # Proteksi aman dari data cache/session lama browser
+                        durasi_shift_terdeteksi = info_lokasi[2] if len(info_lokasi) > 2 else 8
             else:
                 lat_user, lon_user = None, None
                 st.warning("⚠️ Menunggu sensor GPS aktif...")
@@ -331,11 +332,14 @@ else:
         st.write("### 📋 Daftar Titik Lokasi Absensi & Shift Kerja Aktif")
         data_tabel_lokasi = []
         for n, k in st.session_state.daftar_lokasi_klien.items():
+            # Proteksi anti-error: jika data lama (panjangnya cuma 2), beri default 8 jam otomatis
+            durasi_jam = k[2] if len(k) > 2 else 8
+            
             data_tabel_lokasi.append({
                 "Nama Kantor/Klien": n, 
                 "Latitude": k[0], 
                 "Longitude": k[1], 
-                "Ketentuan Shift Kerja": f"{k[2]} Jam Selesai"
+                "Ketentuan Shift Kerja": f"{durasi_jam} Jam Selesai"
             })
         st.dataframe(pd.DataFrame(data_tabel_lokasi), use_container_width=True)
 
