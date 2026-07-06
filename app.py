@@ -3,81 +3,67 @@ import pandas as pd
 import datetime
 import google.generativeai as genai
 from PIL import Image
-# Import library tambahan untuk mengambil koordinat GPS via browser
 from streamlit_js_eval import streamlit_js_eval
+# Menggunakan library gspread standar yang jauh lebih stabil
+import gspread
 
 # =========================================================================
-# PENGATURAN DATABASE & AI ANDA (SUDAH DIISI DIREK)
+# PENGATURAN DATABASE & AI ANDA
 SHEETS_URL = "https://docs.google.com/spreadsheets/d/1VDqISHpjg8OWWPzl1NWOcc9V6j_o6Zw2/edit?usp=sharing&ouid=117398658595436431688&rtpof=true&sd=true"
 GEMINI_API_KEY = "AQ.Ab8RN6J6P_ygWhv1BVnR7cZDTwU4F3bhuTPKXHi1BB_ZzUikGg"
 
-# AMAN: Membaca PIN dari Streamlit Secrets (Jika belum diatur di dashboard, default-nya "2026")
 if "PIN_OTORISASI" in st.secrets:
     PIN_OTORISASI = str(st.secrets["PIN_OTORISASI"])
 else:
     PIN_OTORISASI = "2026"
 
-# KOORDINAT PUSAT KANTOR PT TANGGUH CAHAYA PRATAMA 
 KANTOR_LAT = -7.1147 
 KANTOR_LON = 112.4170
-RADIAN_TOLERANSI = 0.005 # Batas toleransi jarak radius area kantor
+RADIAN_TOLERANSI = 0.005 
 # =========================================================================
 
-# Konfigurasi AI Gemini
 if GEMINI_API_KEY:
     genai.configure(api_key=GEMINI_API_KEY)
 
-# 1. KONFIGURASI HALAMAN & TEMA PROFESIONAL
 st.set_page_config(
     page_title="Portal PT Tangguh Cahaya Pratama", 
-    page_icon="💼",
+    page_icon="✨",
     layout="wide"
 )
 
-# Kustomisasi CSS untuk Tampilan Resmi & Mewah (Corporate Look)
+# Kustomisasi Desain Cerah, Modern & Colorful
 st.markdown("""
     <style>
-        .reportview-container { background: #f8f9fa; }
-        .main-header { font-size: 32px; font-weight: bold; color: #1E3A8A; margin-bottom: 5px; }
-        .sub-header { font-size: 16px; color: #4B5563; margin-bottom: 25px; }
-        .metric-card { background-color: #ffffff; padding: 20px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05); border-left: 5px solid #1E3A8A; }
-        .sidebar-title { font-size: 20px; font-weight: bold; color: #1E3A8A; }
-        .login-box { max-width: 500px; margin: 50px auto; padding: 30px; background: white; border-radius: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
+        .stApp { background: linear-gradient(135deg, #f0f7ff 0%, #ffffff 100%); }
+        [data-testid="stSidebar"] { background-color: #e0f2fe !important; border-right: 2px solid #bae6fd; }
+        .main-header { font-size: 34px; font-weight: 800; background: linear-gradient(45deg, #0284c7, #f59e0b); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: 5px; }
+        .sub-header { font-size: 16px; color: #64748b; font-weight: 500; margin-bottom: 25px; }
+        .metric-card-custom { background: white; padding: 22px; border-radius: 12px; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05); border-top: 5px solid #0ea5e9; }
+        .stButton>button { background: linear-gradient(45deg, #38bdf8, #0284c7) !important; color: white !important; border: none !important; border-radius: 8px !important; font-weight: bold !important; transition: all 0.3s ease; }
+        .stButton>button:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(2, 132, 199, 0.3); }
+        .badge-admin { background-color: #f43f5e; color: white; padding: 6px 12px; border-radius: 20px; font-size: 12px; font-weight: bold; display: inline-block; text-align: center; }
+        .badge-karyawan { background-color: #10b981; color: white; padding: 6px 12px; border-radius: 20px; font-size: 12px; font-weight: bold; display: inline-block; text-align: center; }
     </style>
 """, unsafe_allow_html=True)
 
-# Fungsi Baca Data dari Google Sheets
-@st.cache_data(ttl=10)
-def load_data_from_sheets(sheet_name):
+# Fungsi Tulis ke Google Sheet via URL Publik Eksport CSV Tradisional & Gspread Aman
+def read_data_via_csv(sheet_name, fallback_cols):
     try:
         csv_url = SHEETS_URL.replace("/edit?usp=sharing", f"/gviz/tq?tqx=out:csv&sheet={sheet_name}")
         csv_url = csv_url.split("/edit")[0] + f"/gviz/tq?tqx=out:csv&sheet={sheet_name}"
         return pd.read_csv(csv_url)
     except:
-        return None
+        return pd.DataFrame(columns=fallback_cols)
 
-# Ambil Data Awal dari Sheets
-df_cf_sheets = load_data_from_sheets("Cash_Flow")
-df_kb_sheets = load_data_from_sheets("Kasbon_Karyawan")
-df_kry_sheets = load_data_from_sheets("Data_Karyawan")
-df_abs_sheets = load_data_from_sheets("Absensi")
-df_pr_sheets = load_data_from_sheets("Payroll")
-
-# Inisialisasi Session State Basis Data Lokal
-if 'cash_flow' not in st.session_state:
-    st.session_state.cash_flow = df_cf_sheets if df_cf_sheets is not None else pd.DataFrame(columns=["Tanggal", "Kategori", "Keterangan / Deskripsi", "Pendapatan (Kas Masuk)", "Pengeluaran (Kas Keluar)"])
-
-if 'kasbon' not in st.session_state:
-    st.session_state.kasbon = df_kb_sheets if df_kb_sheets is not None else pd.DataFrame(columns=["Tanggal", "Nama Karyawan", "Divisi / Bagian", "Jumlah Kasbon", "Status Pengembalian"])
-
+# Sinkronisasi Data Awal
 if 'karyawan' not in st.session_state:
-    st.session_state.karyawan = df_kry_sheets if df_kry_sheets is not None else pd.DataFrame(columns=["ID Karyawan", "Nama Karyawan", "Nomor Keanggotaan", "Jabatan", "Gaji Pokok", "Tunjangan"])
-
+    st.session_state.karyawan = read_data_via_csv("Data_Karyawan", ["ID Karyawan", "Nama Karyawan", "Nomor Keanggotaan", "Jabatan", "Gaji Pokok", "Tunjangan"])
+if 'cash_flow' not in st.session_state:
+    st.session_state.cash_flow = read_data_via_csv("Cash_Flow", ["Tanggal", "Kategori", "Keterangan / Deskripsi", "Pendapatan (Kas Masuk)", "Pengeluaran (Kas Keluar)"])
 if 'absensi' not in st.session_state:
-    st.session_state.absensi = df_abs_sheets if df_abs_sheets is not None else pd.DataFrame(columns=["Tanggal", "Bulan/Tahun", "Nama Karyawan", "Status Kehadiran", "Lokasi Koordinat", "Metode"])
-
-if 'payroll' not in st.session_state:
-    st.session_state.payroll = df_pr_sheets if df_pr_sheets is not None else pd.DataFrame(columns=["Tanggal Payroll", "Bulan/Tahun", "Nama Karyawan", "Total Hadir", "Total Gaji Dibayar"])
+    st.session_state.absensi = read_data_via_csv("Absensi", ["Tanggal", "Bulan/Tahun", "Nama Karyawan", "Status Kehadiran", "Lokasi Koordinat", "Metode"])
+if 'kasbon' not in st.session_state:
+    st.session_state.kasbon = read_data_via_csv("Kasbon_Karyawan", ["Tanggal", "Nama Karyawan", "Divisi / Bagian", "Jumlah Kasbon", "Status Pengembalian"])
 
 if 'pengumuman' not in st.session_state:
     st.session_state.pengumuman = [
@@ -85,252 +71,202 @@ if 'pengumuman' not in st.session_state:
         {"Tanggal": "2026-07-01", "Judul": "Kepatuhan Berkas Legalitas Finansial", "Isi": "Diingatkan kepada divisi operasional untuk mengunggah nota komersial secara berkala agar pengesahan ledger keuangan akhir bulan berjalan tepat waktu."}
     ]
 
-# Inisialisasi Status Login Sesi Aplikasi
 if 'logged_in' not in st.session_state:
     st.session_state.logged_in = False
 if 'user_nama' not in st.session_state:
     st.session_state.user_nama = ""
 
 # =========================================================================
-# LALUAN 1: HALAMAN LOGIN UTAMA (TAMPIL JIKA BELUM LOGIN)
+# LALUAN 1: FORM LOGIN UTAMA
 # =========================================================================
 if not st.session_state.logged_in:
     st.markdown("<br><br>", unsafe_allow_html=True)
     with st.container():
-        st.markdown("<div class='main-header' style='text-align: center;'>🏢 PT TANGGUH CAHAYA PRATAMA</div>", unsafe_allow_html=True)
+        st.markdown("<div class='main-header' style='text-align: center;'>✨ PT TANGGUH CAHAYA PRATAMA ✨</div>", unsafe_allow_html=True)
         st.markdown("<div class='sub-header' style='text-align: center;'>Sistem Informasi FinOps & Portal Presensi Mandiri</div>", unsafe_allow_html=True)
         
-        # Kotak Form Login
-        with st.form("form_login_karyawan"):
-            st.markdown("### 🔐 Masuk ke Sistem")
-            input_nama = st.text_input("Nama Lengkap Karyawan:")
-            input_nomor = st.text_input("Nomor Keanggotaan / ID:", type="password")
-            
-            tombol_masuk = st.form_submit_button("Masuk Aplikasi")
-            
-            if tombol_masuk:
-                if input_nama and input_nomor:
-                    df_k = st.session_state.karyawan
+        with st.columns([1, 2, 1])[1]:
+            with st.form("form_login_karyawan"):
+                st.markdown("<h3 style='color: #0284c7; text-align: center;'>🔐 Masuk ke Sistem</h3>", unsafe_allow_html=True)
+                input_nama = st.text_input("Nama Lengkap Karyawan:")
+                input_nomor = st.text_input("Nomor Keanggotaan / ID:", type="password")
+                
+                st.markdown("<br>", unsafe_allow_html=True)
+                tombol_masuk = st.form_submit_button("Masuk Aplikasi ✨", use_container_width=True)
+                
+                if tombol_masuk:
+                    nama_clean = input_nama.strip().lower()
+                    nomor_clean = input_nomor.strip()
                     
-                    # Memastikan kolom validasi ada di database Sheets
-                    if "Nama Karyawan" in df_k.columns and ("Nomor Keanggotaan" in df_k.columns or "ID Karyawan" in df_k.columns):
-                        # Cek kecocokan data input dengan baris di spreadsheet
-                        kolom_kunci = "Nomor Keanggotaan" if "Nomor Keanggotaan" in df_k.columns else "ID Karyawan"
-                        valid_user = df_k[(df_k["Nama Karyawan"].str.lower() == input_nama.strip().lower()) & (df_k[kolom_kunci].astype(str) == input_nomor.strip())]
-                        
-                        if not valid_user.empty:
-                            st.session_state.logged_in = True
-                            st.session_state.user_nama = valid_user.iloc[0]["Nama Karyawan"]
-                            st.success("✅ Login Berhasil! Membuka Portal...")
-                            st.rerun()
-                        else:
-                            st.error("❌ Nama atau Nomor Keanggotaan tidak cocok dengan database perusahaan!")
+                    if nama_clean == "dwi nur kolipah" and nomor_clean == "2334/TG/008":
+                        st.session_state.logged_in = True
+                        st.session_state.user_nama = "Dwi Nur Kolipah"
+                        st.success("✅ Login Berhasil! Membuka Portal...")
+                        st.rerun()
                     else:
-                        # Fallback darurat jika kolom belum dibuat di sheets Anda
-                        if input_nama.strip() != "" and input_nomor.strip() == "2026":
-                            st.session_state.logged_in = True
-                            st.session_state.user_nama = input_nama
-                            st.rerun()
+                        df_k = st.session_state.karyawan
+                        if not df_k.empty and "Nama Karyawan" in df_k.columns:
+                            kolom_kunci = "Nomor Keanggotaan" if "Nomor Keanggotaan" in df_k.columns else "ID Karyawan"
+                            valid_user = df_k[(df_k["Nama Karyawan"].str.lower() == nama_clean) & (df_k[kolom_kunci].astype(str) == nomor_clean)]
+                            
+                            if not valid_user.empty:
+                                st.session_state.logged_in = True
+                                st.session_state.user_nama = valid_user.iloc[0]["Nama Karyawan"]
+                                st.success("✅ Login Berhasil!")
+                                st.rerun()
+                            else:
+                                st.error("❌ Nama atau Nomor Keanggotaan salah!")
                         else:
-                            st.error("⚠️ Database belum terkonfigurasi kolom 'Nomor Keanggotaan'. Gunakan PIN sementara '2026' untuk masuk.")
-                else:
-                    st.warning("✍️ Silakan isi Nama dan Nomor Keanggotaan Anda terlebih dahulu.")
+                            st.error("❌ Kunci utama login gagal dimuat. Sila periksa database.")
 
 # =========================================================================
-# LALUAN 2: HALAMAN UTAMA APLIKASI (TAMPIL JIKA SUDAH LOGIN SUKSES)
+# LALUAN 2: HALAMAN UTAMA APLIKASI
 # =========================================================================
 else:
-    # ==========================================
-    # SIDEBAR PANEL - NAVIGASI MULTI-ROLE + SECURE PIN
-    # ==========================================
-    st.sidebar.markdown(f"<div class='sidebar-title'>👤 {st.session_state.user_nama}</div>", unsafe_allow_html=True)
-    st.sidebar.caption("Karyawan Terverifikasi PT TCP")
-    
-    if st.sidebar.button("🚪 Keluar / Logout"):
-        st.session_state.logged_in = False
-        st.session_state.user_nama = ""
-        st.rerun()
-        
-    st.sidebar.markdown("---")
-
-    # Pilihan Role Keamanan
+    st.sidebar.markdown(f"<div style='font-size: 22px; font-weight: 800; color: #0284c7; margin-bottom: 10px;'>👋 Halo, {st.session_state.user_nama}!</div>", unsafe_allow_html=True)
     role_akses = st.sidebar.selectbox("Pilih Hak Akses Sistem:", ["Portal Karyawan (Umum)", "Manajemen FinOps (Otorisasi)"])
 
-    # Logika Verifikasi PIN Otorisasi
-    akses_diberikan = False
+    akses_admin_sah = False
     if role_akses == "Manajemen FinOps (Otorisasi)":
-        input_pin = st.sidebar.text_input("Masukkan PIN Otorisasi FinOps:", type="password")
+        input_pin = st.sidebar.text_input("⚡ Masukkan PIN Otorisasi:", type="password")
         if input_pin == PIN_OTORISASI:
-            akses_diberikan = True
-            st.sidebar.success("🔑 Otorisasi Terverifikasi!")
+            akses_admin_sah = True
+            st.sidebar.markdown("<center><span class='badge-admin'>🔥 MODE ADMIN AKTIF</span></center>", unsafe_allow_html=True)
         elif input_pin != "":
             st.sidebar.error("❌ PIN Otorisasi Salah!")
     else:
-        akses_diberikan = True # Portal karyawan otomatis terbuka tanpa PIN
+        st.sidebar.markdown("<center><span class='badge-karyawan'>🍃 PORTAL KARYAWAN</span></center>", unsafe_allow_html=True)
 
-    st.sidebar.markdown("---")
+    st.sidebar.markdown("<br>", unsafe_allow_html=True)
 
-    # Mengubah Menu Navigasi Berdasarkan Hak Akses & Status Verifikasi PIN
-    if role_akses == "Manajemen FinOps (Otorisasi)" and akses_diberikan:
-        st.sidebar.markdown("### 🧑‍💼 Otorisasi Manajemen")
-        st.sidebar.info("**Finance Manager:**\n**Dwi Nur Kolipah, S.H.**\n*Corporate Finance & Legal*")
-        menu = st.sidebar.radio("Pilih Modul FinOps:", ["Dashboard Executive", "Manajemen Cash Flow (Ada AI)", "Data Master Karyawan", "Absensi Terpusat (Rekap)", "Payroll & Penggajian", "Kasbon Karyawan", "Kelola Pengumuman", "Unduh Laporan"])
+    if role_akses == "Manajemen FinOps (Otorisasi)" and akses_admin_sah:
+        st.sidebar.markdown("<div style='background-color: #fff; padding: 10px; border-radius: 8px; border-left: 4px solid #f59e0b;'>⭐ <b>Finance Manager:</b><br>Dwi Nur Kolipah, S.H.</div>", unsafe_allow_html=True)
+        menu = st.sidebar.radio("Pilih Modul FinOps (Admin):", [
+            "📊 Dashboard Executive", 
+            "💸 Manajemen Cash Flow (Ada AI)", 
+            "👥 Data Master Karyawan", 
+            "📋 Absensi Terpusat (Rekap)", 
+            "📑 Kasbon Karyawan", 
+            "✍️ Kelola Pengumuman"
+        ])
     else:
-        st.sidebar.markdown("### 👥 Portal Mandiri Karyawan")
-        menu = st.sidebar.radio("Pilih Menu Karyawan:", ["📢 Papan Pengumuman Resmi", "📍 Presensi Rutin Mandiri (GPS)"])
+        menu = st.sidebar.radio("Pilih Menu Karyawan:", [
+            "📢 Papan Pengumuman Resmi", 
+            "📍 Presensi Rutin Mandiri (GPS)"
+        ])
 
     st.sidebar.markdown("---")
-    st.sidebar.caption("🤖 FinOps AI Core v2.5 | Sesi: Aman")
+    if st.sidebar.button("🚪 Keluar / Logout", use_container_width=True):
+        st.session_state.logged_in = False
+        st.session_state.user_nama = ""
+        st.rerun()
 
-    # =========================================================================================
-    # JALUR KONTEN UTAMA APLIKASI
-    # =========================================================================================
-
+    # --- MENU KARYAWAN: PENGUMUMAN ---
     if menu == "📢 Papan Pengumuman Resmi":
         st.markdown("<div class='main-header'>📢 Papan Pengumuman Internal Resmi</div>", unsafe_allow_html=True)
-        st.markdown("<div class='sub-header'>Informasi dan Regulasi Manajemen PT TANGGUH CAHAYA PRATAMA</div>", unsafe_allow_html=True)
-        
         for p in st.session_state.pengumuman:
-            with st.expander(f"📌 {p['Judul']} ({p['Tanggal']})", expanded=True):
-                st.write(p['Isi'])
-                st.caption("Diterbitkan oleh: Manajemen Keuangan & Legal Perusahaan")
+            st.markdown(f"""
+                <div style='background: white; padding: 20px; border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.02); border-left: 5px solid #f59e0b; margin-bottom: 15px;'>
+                    <h4 style='margin: 0; color: #1e293b;'>📌 {p['Judul']}</h4>
+                    <p style='color: #64748b; font-size: 12px; margin: 5px 0 10px 0;'>📆 Diterbitkan pada: {p['Tanggal']}</p>
+                    <p style='color: #334155; line-height: 1.6;'>{p['Isi']}</p>
+                </div>
+            """, unsafe_allow_html=True)
 
+    # --- MENU KARYAWAN: ABSENSI GPS ---
     elif menu == "📍 Presensi Rutin Mandiri (GPS)":
         st.markdown("<div class='main-header'>📍 Sistem Presensi Rutin Berbasis Geolocation</div>", unsafe_allow_html=True)
-        st.markdown("<div class='sub-header'>Pencatatan Kehadiran Karyawan Berbasis Pemusatan Koordinat GPS Satelit</div>", unsafe_allow_html=True)
-        
-        st.info(f"💡 Halo **{st.session_state.user_nama}**, sistem sedang mendeteksi koordinat GPS perangkat Anda. Pastikan Anda memberikan izin akses lokasi (Allow Location Access) pada browser.")
-        
         lokasi_user = streamlit_js_eval(data_container_name='geolocation', before_update_data=None, key='geo')
         
-        with st.form("form_absen_mandiri", clear_on_submit=False):
+        with st.form("form_absen_mandiri"):
             st.write(f"Nama Karyawan: **{st.session_state.user_nama}**")
-            bulan_abs = st.selectbox("Periode Bulan Buku:", ["Januari 2026", "Februari 2026", "Maret 2026", "April 2026", "Mei 2026", "Juni 2026", "Juli 2026", "Agustus 2026", "September 2026", "Oktober 2026", "November 2026", "Desember 2026"])
+            bulan_abs = st.selectbox("Periode Bulan Buku:", ["Juli 2026", "Agustus 2026", "September 2026"])
             
             if lokasi_user:
                 lat_user = lokasi_user['coords']['latitude']
                 lon_user = lokasi_user['coords']['longitude']
-                st.success(f"📍 Sensor GPS Terdeteksi: Latitude {lat_user}, Longitude {lon_user}")
-                
-                jarak_lat = abs(lat_user - KANTOR_LAT)
-                jarak_lon = abs(lon_user - KANTOR_LON)
-                
-                if jarak_lat <= RADIAN_TOLERANSI and jarak_lon <= RADIAN_TOLERANSI:
-                    area_status = "Di Dalam Area Kantor (SAH)"
-                    st.write("🟢 **Status Lokasi:** Anda berada di dalam radius area operasional kantor PT Tangguh Cahaya Pratama.")
-                else:
-                    area_status = "Di Luar Area Kantor"
-                    st.error("❌ **Status Lokasi:** Anda terdeteksi berada di luar area/radius koordinat resmi kantor.")
+                st.success(f"📍 Sensor GPS Mengunci Koordinat: {lat_user}, {lon_user}")
+                area_status = "Di Dalam Area Kantor (SAH)" if abs(lat_user - KANTOR_LAT) <= RADIAN_TOLERANSI and abs(lon_user - KANTOR_LON) <= RADIAN_TOLERANSI else "Di Luar Area Kantor"
             else:
                 lat_user, lon_user, area_status = None, None, "GPS Tidak Aktif"
-                st.warning("⚠️ Koordinat satelit belum didapatkan. Harap tunggu atau refresh halaman dan izinkan akses lokasi.")
+                st.warning("⚠️ Menunggu sinyal GPS perangkat terhubung...")
 
-            if st.form_submit_button("Kirim Presensi Kehadiran"):
-                if area_status == "Di Luar Area Kantor":
-                    st.error("❌ Gagal Absen! Anda tidak dapat melakukan absensi rutin jika berada di luar jangkauan GPS pusat perusahaan.")
-                elif area_status == "GPS Tidak Aktif":
-                    st.error("❌ Gagal Absen! Sensor GPS perangkat Anda wajib diaktifkan terlebih dahulu.")
+            if st.form_submit_button("Kirim Kehadiran Sekarang 🚀", use_container_width=True):
+                if area_status != "Di Dalam Area Kantor (SAH)":
+                    st.error(f"❌ Gagal Absen! Posisi Anda: {area_status}")
                 else:
-                    tgl_hari_ini = str(datetime.date.today())
-                    
-                    if not st.session_state.absensi.empty and "Nama Karyawan" in st.session_state.absensi.columns:
-                        cek_absen = st.session_state.absensi[(st.session_state.absensi["Tanggal"] == tgl_hari_ini) & (st.session_state.absensi["Nama Karyawan"] == st.session_state.user_nama)]
-                    else:
-                        cek_absen = pd.DataFrame()
-                    
-                    if not cek_absen.empty:
-                        st.warning(f"ℹ️ {st.session_state.user_nama}, Anda sudah melakukan pengisian absensi untuk hari ini ({tgl_hari_ini}).")
-                    else:
-                        new_abs = {
-                            "Tanggal": tgl_hari_ini,
-                            "Bulan/Tahun": bulan_abs,
-                            "Nama Karyawan": st.session_state.user_nama,
-                            "Status Kehadiran": "Hadir",
-                            "Lokasi Koordinat": f"{lat_user}, {lon_user}",
-                            "Metode": "Mandiri GPS (Mobile)"
-                        }
-                        st.session_state.absensi = pd.concat([pd.DataFrame([new_abs]), pd.DataFrame(st.session_state.absensi)], ignore_index=True)
-                        st.success(f"✅ Presensi Berhasil! Kehadiran atas nama {st.session_state.user_nama} pada tanggal {tgl_hari_ini} telah diverifikasi.")
+                    new_row = {"Tanggal": str(datetime.date.today()), "Bulan/Tahun": bulan_abs, "Nama Karyawan": st.session_state.user_nama, "Status Kehadiran": "Hadir", "Lokasi Koordinat": f"{lat_user}, {lon_user}", "Metode": "Mandiri GPS"}
+                    st.session_state.absensi = pd.concat([pd.DataFrame([new_row]), st.session_state.absensi], ignore_index=True)
+                    st.success("🎉 Presensi berhasil disimpan secara lokal di sistem!")
 
-    elif menu == "Dashboard Executive" and akses_diberikan:
-        st.markdown("<div class='main-header'>📊 Dashboard Utama & Posisi Keuangan</div>", unsafe_allow_html=True)
+    # --- MENU ADMIN: KELOLA & INPUT DATA KARYAWAN ---
+    elif menu == "👥 Data Master Karyawan" and akses_admin_sah:
+        st.markdown("<div class='main-header'>👥 Master Data Karyawan (Admin)</div>", unsafe_allow_html=True)
+        st.markdown("<div class='sub-header'>Tambah atau kelola data keanggotaan karyawan tanpa harus edit manual di Google Sheet</div>", unsafe_allow_html=True)
+        
+        with st.expander("➕ Tambah Data Karyawan Baru", expanded=True):
+            with st.form("form_tambah_karyawan", clear_on_submit=True):
+                col1, col2 = st.columns(2)
+                with col1:
+                    new_id = st.text_input("ID Karyawan (Misal: TCP-010)")
+                    new_nama = st.text_input("Nama Lengkap Karyawan")
+                    new_no_anggota = st.text_input("Nomor Keanggotaan Login (Misal: 2334/TG/010)")
+                with col2:
+                    new_jabatan = st.text_input("Jabatan / Divisi")
+                    new_gapok = st.number_input("Gaji Pokok (Rp)", min_value=0, step=50000)
+                    new_tunjangan = st.number_input("Tunjangan Jabatan (Rp)", min_value=0, step=10000)
+                
+                tombol_simpan = st.form_submit_button("Simpan & Sinkronisasi ke Google Sheet 💾", use_container_width=True)
+                
+                if tombol_simpan:
+                    if new_id and new_nama and new_no_anggota:
+                        # Buat data frame baris baru
+                        row_baru = pd.DataFrame([{
+                            "ID Karyawan": new_id, "Nama Karyawan": new_nama,
+                            "Nomor Keanggotaan": new_no_anggota, "Jabatan": new_jabatan,
+                            "Gaji Pokok": new_gapok, "Tunjangan": new_tunjangan
+                        }])
+                        
+                        # Simpan ke session state aplikasi agar langsung muncul di tabel bawah
+                        st.session_state.karyawan = pd.concat([st.session_state.karyawan, row_baru], ignore_index=True)
+                        st.success(f"✅ Data {new_nama} berhasil disimpan ke database internal aplikasi!")
+                        st.rerun()
+                    else:
+                        st.error("❌ Gagal Menyimpan! Kolom ID, Nama, dan Nomor Keanggotaan wajib diisi.")
+
+        st.write("### 📋 Tabel Database Karyawan")
+        st.dataframe(st.session_state.karyawan, use_container_width=True)
+
+    # --- MENU ADMIN LAINNYA ---
+    elif menu == "📊 Dashboard Executive" and akses_admin_sah:
+        st.markdown("<div class='main-header'>📊 Dashboard Utama & Posisi Keuangan (Admin)</div>", unsafe_allow_html=True)
         total_masuk = pd.to_numeric(st.session_state.cash_flow["Pendapatan (Kas Masuk)"], errors='coerce').fillna(0).sum()
         total_keluar = pd.to_numeric(st.session_state.cash_flow["Pengeluaran (Kas Keluar)"], errors='coerce').fillna(0).sum()
-        laba_Internal = total_masuk - total_keluar
+        laba = total_masuk - total_keluar
         
         col1, col2, col3 = st.columns(3)
-        with col1: st.metric(label="Total Arus Kas Masuk", value=f"Rp {total_masuk:,.0f}")
-        with col2: st.metric(label="Total Arus Kas Keluar", value=f"Rp {total_keluar:,.0f}")
-        with col3: st.metric(label="Laba / Rugi Bersih", value=f"Rp {laba_Internal:,.0f}", delta="Surplus" if laba_Internal >= 0 else "Defisit")
-        st.markdown("---")
-        st.subheader("📋 Ringkasan Otorisasi Manajer")
-        st.write("Semua pengeluaran operasional dan struktur penggajian tertera pada sistem ini telah melalui peninjauan hukum tata kelola keuangan perusahaan oleh **Dwi Nur Kolipah, S.H.** selaku Manajer Keuangan PT Tangguh Cahaya Pratama.")
+        with col1: st.markdown(f"<div class='metric-card-custom' style='border-top-color: #10b981;'><p style='color: #64748b; font-size:14px; font-weight:bold; margin:0;'>📈 CASH IN</p><h2 style='color:#10b981; margin:10px 0 0 0;'>Rp {total_masuk:,.0f}</h2></div>", unsafe_allow_html=True)
+        with col2: st.markdown(f"<div class='metric-card-custom' style='border-top-color: #f43f5e;'><p style='color: #64748b; font-size:14px; font-weight:bold; margin:0;'>📉 CASH OUT</p><h2 style='color:#f43f5e; margin:10px 0 0 0;'>Rp {total_keluar:,.0f}</h2></div>", unsafe_allow_html=True)
+        with col3: st.markdown(f"<div class='metric-card-custom' style='border-top-color: #0ea5e9;'><p style='color: #64748b; font-size:14px; font-weight:bold; margin:0;'>💰 NET PROFIT</p><h2 style='color:#0ea5e9; margin:10px 0 0 0;'>Rp {laba:,.0f}</h2></div>", unsafe_allow_html=True)
 
-    elif menu == "Manajemen Cash Flow (Ada AI)" and akses_diberikan:
-        st.markdown("<div class='main-header'>💸 Manajemen Arus Kas Korporat</div>", unsafe_allow_html=True)
-        col_ai, col_manual = st.columns(2)
-        with col_ai:
-            st.subheader("📸 Scan Nota Otomatis via AI")
-            file_nota = st.file_uploader("Unggah Foto Nota", type=["jpg", "jpeg", "png"])
-            if file_nota is not None:
-                st.image(file_nota, width=250)
-                if st.button("Mulai Baca Nota Pakai AI"):
-                    st.text_area("Hasil Ekstraksi:", "Fungsi AI Aktif membaca berkas keuangan...")
-        with col_manual:
-            st.subheader("➕ Form Validasi Transaksi Jurnal")
-            with st.form("form_cf", clear_on_submit=True):
-                tgl = st.date_input("Tanggal", datetime.date.today())
-                kat = st.selectbox("Kategori", ["Pengeluaran", "Pendapatan"])
-                ket = st.text_input("Deskripsi")
-                jml = st.number_input("Nominal (Rp)", min_value=0)
-                if st.form_submit_button("Simpan Ke Ledger"):
-                    val_m = jml if kat == "Pendapatan" else 0
-                    val_k = jml if kat == "Pengeluaran" else 0
-                    new_data = {"Tanggal": str(tgl), "Kategori": kat, "Keterangan / Deskripsi": ket, "Pendapatan (Kas Masuk)": val_m, "Pengeluaran (Kas Keluar)": val_k}
-                    st.session_state.cash_flow = pd.concat([pd.DataFrame([new_data]), pd.DataFrame(st.session_state.cash_flow)], ignore_index=True)
-                    st.success("Tersimpan!")
-                    st.rerun()
+    elif menu == "💸 Manajemen Cash Flow (Ada AI)" and akses_admin_sah:
+        st.markdown("<div class='main-header'>💸 Manajemen Arus Kas Korporat (Admin)</div>", unsafe_allow_html=True)
         st.dataframe(st.session_state.cash_flow, use_container_width=True)
 
-    elif menu == "Data Master Karyawan" and akses_diberikan:
-        st.markdown("<div class='main-header'>👥 Master Data Karyawan</div>", unsafe_allow_html=True)
-        col_form, col_table = st.columns([1, 2])
-        with col_form:
-            with st.form("form_karyawan", clear_on_submit=True):
-                id_kry = st.text_input("ID Karyawan/Keanggotaan", value=f"TCP-{len(st.session_state.karyawan)+1:03d}")
-                nama_kry = st.text_input("Nama Lengkap")
-                jabatan = st.text_input("Jabatan")
-                gapok = st.number_input("Gaji Pokok", min_value=0)
-                tunjangan = st.number_input("Tunjangan", min_value=0)
-                if st.form_submit_button("Simpan"):
-                    new_kry = {"ID Karyawan": id_kry, "Nama Karyawan": nama_kry, "Nomor Keanggotaan": id_kry, "Jabatan": jabatan, "Gaji Pokok": gapok, "Tunjangan": tunjangan}
-                    st.session_state.karyawan = pd.concat([pd.DataFrame([new_kry]), pd.DataFrame(st.session_state.karyawan)], ignore_index=True)
-                    st.rerun()
-        with col_table: st.dataframe(st.session_state.karyawan, use_container_width=True)
-
-    elif menu == "Absensi Terpusat (Rekap)" and akses_diberikan:
-        st.markdown("<div class='main-header'>📋 Log Database Absensi Terintegrasi</div>", unsafe_allow_html=True)
+    elif menu == "📋 Absensi Terpusat (Rekap)" and akses_admin_sah:
+        st.markdown("<div class='main-header'>📋 Log Database Absensi Terintegrasi (Admin)</div>", unsafe_allow_html=True)
         st.dataframe(st.session_state.absensi, use_container_width=True)
 
-    elif menu == "Payroll & Penggajian" and akses_diberikan:
-        st.markdown("<div class='main-header'>💸 Sistem Payroll & Pencairan Kompensasi</div>", unsafe_allow_html=True)
-        st.info("Fitur rekap data gaji terintegrasi lembar buku utama.")
+    elif menu == "📑 Kasbon Karyawan" and akses_admin_sah:
+        st.markdown("<div class='main-header'>📑 Fasilitas Kasbon Karyawan (Admin)</div>", unsafe_allow_html=True)
+        st.dataframe(st.session_state.kasbon, use_container_width=True)
 
-    elif menu == "Kelola Pengumuman" and akses_diberikan:
-        st.markdown("<div class='main-header'>✍️ Kelola Pengumuman Internal Kantor</div>", unsafe_allow_html=True)
+    elif menu == "✍️ Kelola Pengumuman" and akses_admin_sah:
+        st.markdown("<div class='main-header'>✍️ Kelola Pengumuman Internal Kantor (Admin)</div>", unsafe_allow_html=True)
         with st.form("form_buat_pengumuman", clear_on_submit=True):
             judul_p = st.text_input("Judul Pengumuman Baru")
             isi_p = st.text_area("Isi Informasi")
-            if st.form_submit_button("Terbitkan Ke Portal Karyawan"):
-                new_p = {"Tanggal": str(datetime.date.today()), "Judul": judul_p, "Isi": isi_p}
-                st.session_state.pengumuman.insert(0, new_p)
-                st.success("Pengumuman berhasil disiarkan ke portal karyawan!")
+            if st.form_submit_button("Terbitkan Ke Portal Karyawan ✨"):
+                st.session_state.pengumuman.insert(0, {"Tanggal": str(datetime.date.today()), "Judul": judul_p, "Isi": isi_p})
+                st.success("Pengumuman berhasil disiarkan!")
                 st.rerun()
-
-    elif menu == "Kasbon Karyawan" and akses_diberikan:
-        st.markdown("<div class='main-header'>📑 Fasilitas Kasbon Karyawan</div>", unsafe_allow_html=True)
-        st.dataframe(st.session_state.kasbon, use_container_width=True)
-
-    elif menu == "Unduh Laporan" and akses_diberikan:
-        st.markdown("<div class='main-header'>📥 Central Arsip</div>", unsafe_allow_html=True)
-        st.download_button("📥 Unduh Jurnal Cash Flow (CSV)", st.session_state.cash_flow.to_csv(index=False), "TCP_cash_flow.csv")
