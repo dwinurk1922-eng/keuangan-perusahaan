@@ -3,3 +3,4 @@ pandas
 google-generativeai
 Pillow
 streamlit-js-eval
+st-gsheets-connection==0.0.3
