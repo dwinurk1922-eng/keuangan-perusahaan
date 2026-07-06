@@ -1,5 +1,5 @@
 streamlit
 pandas
-gpsread
+gspread
 oauth2client
 streamlit-js-eval
