@@ -5,6 +5,7 @@ import datetime
 # =========================================================================
 # LALU TEMPELKAN/PASTE LINK GOOGLE SHEETS ANDA DI DALAM TANDA PETIK DI BAWAH INI:
 SHEETS_URL = "https://docs.google.com/spreadsheets/d/1VDqISHpjg8OWWPzl1NWOcc9V6j_o6Zw2/edit?usp=sharing&ouid=117398658595436431688&rtpof=true&sd=true"
+GEMINI_API_KEY = "AQ.Ab8RN6J6P_ygWhv1BVnR7cZDTwU4F3bhuTPKXHi1BB_ZzUikGg"
 # =========================================================================
 
 # 1. KONFIGURASI HALAMAN
