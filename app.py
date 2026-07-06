@@ -7,19 +7,18 @@ from PIL import Image
 from streamlit_js_eval import streamlit_js_eval
 
 # =========================================================================
-# PENGATURAN DATABASE & AI ANDA (ISI DI SINI)
+# PENGATURAN DATABASE & AI ANDA (SUDAH DIISI DIREK)
 SHEETS_URL = "https://docs.google.com/spreadsheets/d/1VDqISHpjg8OWWPzl1NWOcc9V6j_o6Zw2/edit?usp=sharing&ouid=117398658595436431688&rtpof=true&sd=true"
 GEMINI_API_KEY = "AQ.Ab8RN6J6P_ygWhv1BVnR7cZDTwU4F3bhuTPKXHi1BB_ZzUikGg"
 
-# KOORDINAT PUSAT KANTOR PT TANGGUH CAHAYA PRATAMA (Silakan sesuaikan koordinat asli kantor Anda)
-# Contoh di bawah ini adalah koordinat contoh titik tengah
+# KOORDINAT PUSAT KANTOR PT TANGGUH CAHAYA PRATAMA 
 KANTOR_LAT = -7.1147 
 KANTOR_LON = 112.4170
-RADIAN_TOLERANSI = 0.005 # Batas toleransi jarak (kurang lebih 100-200 meter dari titik pusat)
+RADIAN_TOLERANSI = 0.005 # Batas toleransi jarak radius area kantor
 # =========================================================================
 
 # Konfigurasi AI Gemini
-if GEMINI_API_KEY and GEMINI_API_KEY != "MASUKKAN_API_KEY_GEMINI_ANDA_DISINI":
+if GEMINI_API_KEY:
     genai.configure(api_key=GEMINI_API_KEY)
 
 # 1. KONFIGURASI HALAMAN & TEMA PROFESIONAL
@@ -57,15 +56,22 @@ df_kry_sheets = load_data_from_sheets("Data_Karyawan")
 df_abs_sheets = load_data_from_sheets("Absensi")
 df_pr_sheets = load_data_from_sheets("Payroll")
 
-# Inisialisasi Session State
+# Inisialisasi Session State Basis Data Lokal
 if 'cash_flow' not in st.session_state:
-    st.session_state.cash_flow = df_cf_sheets if df_cf_sheets is not None else pd.DataFrame(columns=["Tanggal", "Kategori", "Keterangan / Deskripsi", "Pendapatan (Kas Masuk)", "Pengeluaran (Kas Keluar)"])
+    if df_cf_sheets is not None:
+        st.session_state.cash_flow = df_cf_sheets
+    else:
+        st.session_state.cash_flow = pd.DataFrame(columns=["Tanggal", "Kategori", "Keterangan / Deskripsi", "Pendapatan (Kas Masuk)", "Pengeluaran (Kas Keluar)"])
+
 if 'kasbon' not in st.session_state:
     st.session_state.kasbon = df_kb_sheets if df_kb_sheets is not None else pd.DataFrame(columns=["Tanggal", "Nama Karyawan", "Divisi / Bagian", "Jumlah Kasbon", "Status Pengembalian"])
+
 if 'karyawan' not in st.session_state:
     st.session_state.karyawan = df_kry_sheets if df_kry_sheets is not None else pd.DataFrame(columns=["ID Karyawan", "Nama Karyawan", "Jabatan", "Gaji Pokok", "Tunjangan"])
+
 if 'absensi' not in st.session_state:
     st.session_state.absensi = df_abs_sheets if df_abs_sheets is not None else pd.DataFrame(columns=["Tanggal", "Bulan/Tahun", "Nama Karyawan", "Status Kehadiran", "Lokasi Koordinat", "Metode"])
+
 if 'payroll' not in st.session_state:
     st.session_state.payroll = df_pr_sheets if df_pr_sheets is not None else pd.DataFrame(columns=["Tanggal Payroll", "Bulan/Tahun", "Nama Karyawan", "Total Hadir", "Total Gaji Dibayar"])
 
@@ -96,12 +102,10 @@ st.sidebar.markdown("---")
 
 # Pilihan Role untuk membatasi hak akses visual
 role_akses = st.sidebar.selectbox("Pilih Hak Akses Sistem:", ["Portal Karyawan (Umum)", "Manajemen FinOps (Otorisasi)"])
-
 st.sidebar.markdown("---")
 
 # Mengubah Menu Navigasi Berdasarkan Hak Akses yang Dipilih
 if role_akses == "Manajemen FinOps (Otorisasi)":
-    # Profil Manajer Keuangan (Resmi)
     st.sidebar.markdown("### 🧑‍💼 Otorisasi Manajemen")
     st.sidebar.info("**Finance Manager:**\n**Dwi Nur Kolipah, S.H.**\n*Corporate Finance & Legal*")
     menu = st.sidebar.radio("Pilih Modul FinOps:", ["Dashboard Eksekutif", "Manajemen Cash Flow (Ada AI)", "Data Master Karyawan", "Absensi Terpusat (Rekap)", "Payroll & Penggajian", "Kasbon Karyawan", "Kelola Pengumuman", "Unduh Laporan"])
@@ -136,9 +140,8 @@ elif menu == "📍 Presensi Rutin Mandiri (GPS)":
     if st.session_state.karyawan.empty:
         st.warning("⚠️ Database master karyawan perusahaan belum diisi oleh manajemen. Silakan hubungi bagian FinOps.")
     else:
-        st.info("💡 Sistem sedang membaca koordinat perangkat Anda. Pastikan Anda telah memberikan izin/akses lokasi (*Allow Location Access*) pada browser laptop atau HP Anda.")
+        st.info("💡 Sistem sedang membaca koordinat perangkat Anda. Pastikan Anda telah memberikan izin/akses lokasi (Allow Location Access) pada browser laptop atau HP Anda.")
         
-        # Mengambil data lokasi asli browser memakai JavaScript bawaan komponen eksternal
         lokasi_user = streamlit_js_eval(data_container_name='geolocation', before_update_data=None, key='geo')
         
         with st.form("form_absen_mandiri", clear_on_submit=False):
@@ -146,13 +149,11 @@ elif menu == "📍 Presensi Rutin Mandiri (GPS)":
             nama_absen = st.selectbox("Pilih Nama Anda:", list_karyawan)
             bulan_abs = st.selectbox("Periode Bulan Buku:", ["Januari 2026", "Februari 2026", "Maret 2026", "April 2026", "Mei 2026", "Juni 2026", "Juli 2026", "Agustus 2026", "September 2026", "Oktober 2026", "November 2026", "Desember 2026"])
             
-            # Validasi Tampilan Koordinat Lokasi GPS
             if lokasi_user:
                 lat_user = lokasi_user['coords']['latitude']
                 lon_user = lokasi_user['coords']['longitude']
                 st.success(f"📍 Sensor GPS Terdeteksi: Latitude {lat_user}, Longitude {lon_user}")
                 
-                # Rumus matematika sederhana menghitung deviasi jarak radius pusat kantor
                 jarak_lat = abs(lat_user - KANTOR_LAT)
                 jarak_lon = abs(lon_user - KANTOR_LON)
                 
@@ -173,7 +174,6 @@ elif menu == "📍 Presensi Rutin Mandiri (GPS)":
                     st.error("❌ Gagal Absen! Sensor GPS perangkat Anda wajib diaktifkan terlebih dahulu.")
                 else:
                     tgl_hari_ini = str(datetime.date.today())
-                    # Cek duplikasi absensi karyawan pada hari yang sama
                     cek_absen = st.session_state.absensi[(st.session_state.absensi["Tanggal"] == tgl_hari_ini) & (st.session_state.absensi["Nama Karyawan"] == nama_absen)]
                     
                     if not cek_absen.empty:
@@ -188,22 +188,24 @@ elif menu == "📍 Presensi Rutin Mandiri (GPS)":
                             "Metode": "Mandiri GPS (Mobile)"
                         }
                         st.session_state.absensi = pd.concat([pd.DataFrame([new_abs]), pd.DataFrame(st.session_state.absensi)], ignore_index=True)
-                        st.success(f"✅ Presensi Berhasil! Kehadiran atas nama {nama_absen} pada tanggal {tgl_hari_ini} telah diverifikasi oleh sistem pusat.")
-
+                        st.success(f"✅ Presensi Berhasil! Kehadiran atas nama {nama_absen} pada tanggal {tgl_hari_ini} telah diverifikasi.")
 
 # =========================================================================================
-# BAGIAN JALUR KODE MANAGEMENT FINOPS (Sama Seperti Sebelumnya, Hanya Dipindahkan Kondisinya)
+# BAGIAN JALUR KODE MANAGEMENT FINOPS
 # =========================================================================================
 elif menu == "Dashboard Eksekutif":
     st.markdown("<div class='main-header'>📊 Dashboard Utama & Posisi Keuangan</div>", unsafe_allow_html=True)
     st.markdown("<div class='sub-header'>PT TANGGUH CAHAYA PRATAMA</div>", unsafe_allow_html=True)
-    total_masuk = pd.to_numeric(st.session_state.cash_flow["Pendapatan (Kas Masuk)"]).sum()
-    total_keluar = pd.to_numeric(st.session_state.cash_flow["Pengeluaran (Kas Keluar)"]).sum()
-    laba_bersih = total_masuk - total_keluar
+    
+    # PERBAIKAN: Menggunakan errors='coerce' untuk mencegah ValueError akibat karakter non-angka di Sheets
+    total_masuk = pd.to_numeric(st.session_state.cash_flow["Pendapatan (Kas Masuk)"], errors='coerce').fillna(0).sum()
+    total_keluar = pd.to_numeric(st.session_state.cash_flow["Pengeluaran (Kas Keluar)"], errors='coerce').fillna(0).sum()
+    laba_Internal = total_masuk - total_keluar
+    
     col1, col2, col3 = st.columns(3)
     with col1: st.metric(label="Total Arus Kas Masuk", value=f"Rp {total_masuk:,.0f}")
     with col2: st.metric(label="Total Arus Kas Keluar", value=f"Rp {total_keluar:,.0f}")
-    with col3: st.metric(label="Laba / Rugi Bersih", value=f"Rp {laba_bersih:,.0f}", delta="Surplus" if laba_bersih >= 0 else "Defisit")
+    with col3: st.metric(label="Laba / Rugi Bersih", value=f"Rp {laba_Internal:,.0f}", delta="Surplus" if laba_Internal >= 0 else "Defisit")
     st.markdown("---")
     st.subheader("📋 Ringkasan Otorisasi Manajer")
     st.write("Semua pengeluaran operasional dan struktur penggajian tertera pada sistem ini telah melalui peninjauan hukum tata kelola keuangan perusahaan oleh **Dwi Nur Kolipah, S.H.** selaku Manajer Keuangan PT Tangguh Cahaya Pratama.")
@@ -253,7 +255,7 @@ elif menu == "Data Master Karyawan":
 
 elif menu == "Absensi Terpusat (Rekap)":
     st.markdown("<div class='main-header'>📋 Log Database Absensi Terintegrasi</div>", unsafe_allow_html=True)
-    st.write("Berikut adalah seluruh log presensi masuk yang diisi secara mandiri oleh karyawan menggunakan penitik koordinat satelit GPS maupun yang dimasukkan manual:")
+    st.write("Berikut adalah log presensi masuk yang diisi secara mandiri oleh karyawan menggunakan koordinat satelit GPS:")
     st.dataframe(st.session_state.absensi, use_container_width=True)
 
 elif menu == "Payroll & Penggajian":
@@ -266,7 +268,7 @@ elif menu == "Payroll & Penggajian":
         
         db_absen = st.session_state.absensi[(st.session_state.absensi["Nama Karyawan"] == karyawan_pilih) & (st.session_state.absensi["Bulan/Tahun"] == bulan_pilih) & (st.session_state.absensi["Status Kehadiran"] == "Hadir")]
         total_masuk = len(db_absen)
-        st.write(f"ℹ️ **Kehadiran Berdasarkan Absen GPS & Manual:** {total_masuk} Hari")
+        st.write(f"ℹ️ **Kehadiran Berdasarkan Absen GPS:** {total_masuk} Hari")
         
         if st.form_submit_button("Otorisasi & Cairkan Gaji"):
             st.success("Payroll sukses diproses!")
