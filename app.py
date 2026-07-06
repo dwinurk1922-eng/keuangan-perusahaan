@@ -11,6 +11,12 @@ from streamlit_js_eval import streamlit_js_eval
 SHEETS_URL = "https://docs.google.com/spreadsheets/d/1VDqISHpjg8OWWPzl1NWOcc9V6j_o6Zw2/edit?usp=sharing&ouid=117398658595436431688&rtpof=true&sd=true"
 GEMINI_API_KEY = "AQ.Ab8RN6J6P_ygWhv1BVnR7cZDTwU4F3bhuTPKXHi1BB_ZzUikGg"
 
+# AMAN: Membaca PIN dari Streamlit Secrets (Jika belum diatur di dashboard, default-nya "2026")
+if "PIN_OTORISASI" in st.secrets:
+    PIN_OTORISASI = str(st.secrets["PIN_OTORISASI"])
+else:
+    PIN_OTORISASI = "2026"
+
 # KOORDINAT PUSAT KANTOR PT TANGGUH CAHAYA PRATAMA 
 KANTOR_LAT = -7.1147 
 KANTOR_LON = 112.4170
@@ -23,7 +29,7 @@ if GEMINI_API_KEY:
 
 # 1. KONFIGURASI HALAMAN & TEMA PROFESIONAL
 st.set_page_config(
-    page_title="FinOps Central - PT Tangguh Cahaya Pratama", 
+    page_title="Portal Karyawan - PT Tangguh Cahaya Pratama", 
     page_icon="💼",
     layout="wide"
 )
@@ -94,18 +100,31 @@ def analisis_nota_dengan_ai(foto_input):
         return f"Error AI: {str(e)}"
 
 # ==========================================
-# SIDEBAR PANEL - NAVIGASI MULTI-ROLE
+# SIDEBAR PANEL - NAVIGASI MULTI-ROLE + SECURE PIN
 # ==========================================
 st.sidebar.markdown("<div class='sidebar-title'>🏢 PT TANGGUH CAHAYA PRATAMA</div>", unsafe_allow_html=True)
 st.sidebar.caption("Sistem Informasi FinOps & Payroll Enterprise")
 st.sidebar.markdown("---")
 
-# Pilihan Role untuk membatasi hak akses visual
+# Pilihan Role Keamanan
 role_akses = st.sidebar.selectbox("Pilih Hak Akses Sistem:", ["Portal Karyawan (Umum)", "Manajemen FinOps (Otorisasi)"])
+
+# Logika Verifikasi PIN Otorisasi
+akses_diberikan = False
+if role_akses == "Manajemen FinOps (Otorisasi)":
+    input_pin = st.sidebar.text_input("Masukkan PIN Otorisasi FinOps:", type="password")
+    if input_pin == PIN_OTORISASI:
+        akses_diberikan = True
+        st.sidebar.success("🔑 Otorisasi Terverifikasi!")
+    elif input_pin != "":
+        st.sidebar.error("❌ PIN Otorisasi Salah!")
+else:
+    akses_diberikan = True # Portal karyawan otomatis terbuka tanpa PIN
+
 st.sidebar.markdown("---")
 
-# Mengubah Menu Navigasi Berdasarkan Hak Akses yang Dipilih
-if role_akses == "Manajemen FinOps (Otorisasi)":
+# Mengubah Menu Navigasi Berdasarkan Hak Akses & Status Verifikasi PIN
+if role_akses == "Manajemen FinOps (Otorisasi)" and akses_diberikan:
     st.sidebar.markdown("### 🧑‍💼 Otorisasi Manajemen")
     st.sidebar.info("**Finance Manager:**\n**Dwi Nur Kolipah, S.H.**\n*Corporate Finance & Legal*")
     menu = st.sidebar.radio("Pilih Modul FinOps:", ["Dashboard Eksekutif", "Manajemen Cash Flow (Ada AI)", "Data Master Karyawan", "Absensi Terpusat (Rekap)", "Payroll & Penggajian", "Kasbon Karyawan", "Kelola Pengumuman", "Unduh Laporan"])
@@ -196,7 +215,7 @@ elif menu == "📍 Presensi Rutin Mandiri (GPS)":
                         st.session_state.absensi = pd.concat([pd.DataFrame([new_abs]), pd.DataFrame(st.session_state.absensi)], ignore_index=True)
                         st.success(f"✅ Presensi Berhasil! Kehadiran atas nama {nama_absen} pada tanggal {tgl_hari_ini} telah diverifikasi.")
 
-elif menu == "Dashboard Eksekutif":
+elif menu == "Dashboard Eksekutif" and akses_diberikan:
     st.markdown("<div class='main-header'>📊 Dashboard Utama & Posisi Keuangan</div>", unsafe_allow_html=True)
     st.markdown("<div class='sub-header'>PT TANGGUH CAHAYA PRATAMA</div>", unsafe_allow_html=True)
     
@@ -212,7 +231,7 @@ elif menu == "Dashboard Eksekutif":
     st.subheader("📋 Ringkasan Otorisasi Manajer")
     st.write("Semua pengeluaran operasional dan struktur penggajian tertera pada sistem ini telah melalui peninjauan hukum tata kelola keuangan perusahaan oleh **Dwi Nur Kolipah, S.H.** selaku Manajer Keuangan PT Tangguh Cahaya Pratama.")
 
-elif menu == "Manajemen Cash Flow (Ada AI)":
+elif menu == "Manajemen Cash Flow (Ada AI)" and akses_diberikan:
     st.markdown("<div class='main-header'>💸 Manajemen Arus Kas Korporat</div>", unsafe_allow_html=True)
     col_ai, col_manual = st.columns(2)
     with col_ai:
@@ -239,7 +258,7 @@ elif menu == "Manajemen Cash Flow (Ada AI)":
                 st.rerun()
     st.dataframe(st.session_state.cash_flow, use_container_width=True)
 
-elif menu == "Data Master Karyawan":
+elif menu == "Data Master Karyawan" and akses_diberikan:
     st.markdown("<div class='main-header'>👥 Master Data Karyawan</div>", unsafe_allow_html=True)
     col_form, col_table = st.columns([1, 2])
     with col_form:
@@ -255,12 +274,12 @@ elif menu == "Data Master Karyawan":
                 st.rerun()
     with col_table: st.dataframe(st.session_state.karyawan, use_container_width=True)
 
-elif menu == "Absensi Terpusat (Rekap)":
+elif menu == "Absensi Terpusat (Rekap)" and akses_diberikan:
     st.markdown("<div class='main-header'>📋 Log Database Absensi Terintegrasi</div>", unsafe_allow_html=True)
     st.write("Berikut adalah log presensi masuk yang diisi secara mandiri oleh karyawan menggunakan koordinat satelit GPS:")
     st.dataframe(st.session_state.absensi, use_container_width=True)
 
-elif menu == "Payroll & Penggajian":
+elif menu == "Payroll & Penggajian" and akses_diberikan:
     st.markdown("<div class='main-header'>💸 Sistem Payroll & Pencairan Kompensasi</div>", unsafe_allow_html=True)
     
     if "Nama Karyawan" in st.session_state.karyawan.columns and not st.session_state.karyawan.empty:
@@ -290,7 +309,7 @@ elif menu == "Payroll & Penggajian":
             if tombol_payroll:
                 st.success(f"✅ Payroll untuk {karyawan_pilih} periode {bulan_pilih} sukses diproses dan diotorisasi!")
 
-elif menu == "Kelola Pengumuman":
+elif menu == "Kelola Pengumuman" and akses_diberikan:
     st.markdown("<div class='main-header'>✍️ Kelola Pengumuman Internal Kantor</div>", unsafe_allow_html=True)
     with st.form("form_buat_pengumuman", clear_on_submit=True):
         judul_p = st.text_input("Judul Pengumuman Baru")
@@ -301,10 +320,10 @@ elif menu == "Kelola Pengumuman":
             st.success("Pengumuman berhasil disiarkan ke portal karyawan!")
             st.rerun()
 
-elif menu == "Kasbon Karyawan":
+elif menu == "Kasbon Karyawan" and akses_diberikan:
     st.markdown("<div class='main-header'>📑 Fasilitas Kasbon Karyawan</div>", unsafe_allow_html=True)
     st.dataframe(st.session_state.kasbon, use_container_width=True)
 
-elif menu == "Unduh Laporan":
+elif menu == "Unduh Laporan" and akses_diberikan:
     st.markdown("<div class='main-header'>📥 Central Arsip</div>", unsafe_allow_html=True)
     st.download_button("📥 Unduh Jurnal Cash Flow (CSV)", st.session_state.cash_flow.to_csv(index=False), "TCP_cash_flow.csv")
