@@ -118,9 +118,10 @@ st.sidebar.markdown("---")
 st.sidebar.caption("🤖 FinOps AI Core v2.5 | GPS Terpusat: Aktif")
 
 
-# ==========================================
-# JALUR KODE 1: KARYAWAN - PAPAN PENGUMUMAN
-# ==========================================
+# =========================================================================================
+# JALUR MENU UTAMA APLIKASI
+# =========================================================================================
+
 if menu == "📢 Papan Pengumuman Resmi":
     st.markdown("<div class='main-header'>📢 Papan Pengumuman Internal Resmi</div>", unsafe_allow_html=True)
     st.markdown("<div class='sub-header'>Informasi dan Regulasi Manajemen PT TANGGUH CAHAYA PRATAMA</div>", unsafe_allow_html=True)
@@ -130,22 +131,23 @@ if menu == "📢 Papan Pengumuman Resmi":
             st.write(p['Isi'])
             st.caption("Diterbitkan oleh: Manajemen Keuangan & Legal Perusahaan")
 
-# ==========================================
-# JALUR KODE 2: KARYAWAN - ABSENSI MANDIRI (GPS)
-# ==========================================
 elif menu == "📍 Presensi Rutin Mandiri (GPS)":
     st.markdown("<div class='main-header'>📍 Sistem Presensi Rutin Berbasis Geolocation</div>", unsafe_allow_html=True)
     st.markdown("<div class='sub-header'>Pencatatan Kehadiran Karyawan Berbasis Pemusatan Koordinat GPS Satelit</div>", unsafe_allow_html=True)
     
-    if st.session_state.karyawan.empty:
-        st.warning("⚠️ Database master karyawan perusahaan belum diisi oleh manajemen. Silakan hubungi bagian FinOps.")
+    if "Nama Karyawan" in st.session_state.karyawan.columns and not st.session_state.karyawan.empty:
+        list_karyawan = st.session_state.karyawan["Nama Karyawan"].tolist()
+    else:
+        list_karyawan = []
+        
+    if not list_karyawan:
+        st.warning("⚠️ Database master karyawan perusahaan belum diisi oleh manajemen. Silakan hubungi bagian FinOps untuk mengisi Master Data Karyawan terlebih dahulu.")
     else:
         st.info("💡 Sistem sedang membaca koordinat perangkat Anda. Pastikan Anda telah memberikan izin/akses lokasi (Allow Location Access) pada browser laptop atau HP Anda.")
         
         lokasi_user = streamlit_js_eval(data_container_name='geolocation', before_update_data=None, key='geo')
         
         with st.form("form_absen_mandiri", clear_on_submit=False):
-            list_karyawan = st.session_state.karyawan["Nama Karyawan"].tolist()
             nama_absen = st.selectbox("Pilih Nama Anda:", list_karyawan)
             bulan_abs = st.selectbox("Periode Bulan Buku:", ["Januari 2026", "Februari 2026", "Maret 2026", "April 2026", "Mei 2026", "Juni 2026", "Juli 2026", "Agustus 2026", "September 2026", "Oktober 2026", "November 2026", "Desember 2026"])
             
@@ -174,7 +176,11 @@ elif menu == "📍 Presensi Rutin Mandiri (GPS)":
                     st.error("❌ Gagal Absen! Sensor GPS perangkat Anda wajib diaktifkan terlebih dahulu.")
                 else:
                     tgl_hari_ini = str(datetime.date.today())
-                    cek_absen = st.session_state.absensi[(st.session_state.absensi["Tanggal"] == tgl_hari_ini) & (st.session_state.absensi["Nama Karyawan"] == nama_absen)]
+                    
+                    if not st.session_state.absensi.empty and "Nama Karyawan" in st.session_state.absensi.columns:
+                        cek_absen = st.session_state.absensi[(st.session_state.absensi["Tanggal"] == tgl_hari_ini) & (st.session_state.absensi["Nama Karyawan"] == nama_absen)]
+                    else:
+                        cek_absen = pd.DataFrame()
                     
                     if not cek_absen.empty:
                         st.warning(f"ℹ️ {nama_absen}, Anda sudah melakukan pengisian absensi untuk hari ini ({tgl_hari_ini}).")
@@ -190,14 +196,10 @@ elif menu == "📍 Presensi Rutin Mandiri (GPS)":
                         st.session_state.absensi = pd.concat([pd.DataFrame([new_abs]), pd.DataFrame(st.session_state.absensi)], ignore_index=True)
                         st.success(f"✅ Presensi Berhasil! Kehadiran atas nama {nama_absen} pada tanggal {tgl_hari_ini} telah diverifikasi.")
 
-# =========================================================================================
-# BAGIAN JALUR KODE MANAGEMENT FINOPS
-# =========================================================================================
 elif menu == "Dashboard Eksekutif":
     st.markdown("<div class='main-header'>📊 Dashboard Utama & Posisi Keuangan</div>", unsafe_allow_html=True)
     st.markdown("<div class='sub-header'>PT TANGGUH CAHAYA PRATAMA</div>", unsafe_allow_html=True)
     
-    # PERBAIKAN: Menggunakan errors='coerce' untuk mencegah ValueError akibat karakter non-angka di Sheets
     total_masuk = pd.to_numeric(st.session_state.cash_flow["Pendapatan (Kas Masuk)"], errors='coerce').fillna(0).sum()
     total_keluar = pd.to_numeric(st.session_state.cash_flow["Pengeluaran (Kas Keluar)"], errors='coerce').fillna(0).sum()
     laba_Internal = total_masuk - total_keluar
@@ -259,10 +261,8 @@ elif menu == "Absensi Terpusat (Rekap)":
     st.dataframe(st.session_state.absensi, use_container_width=True)
 
 elif menu == "Payroll & Penggajian":
-   elif menu == "Payroll & Penggajian":
     st.markdown("<div class='main-header'>💸 Sistem Payroll & Pencairan Kompensasi</div>", unsafe_allow_html=True)
     
-    # PERBAIKAN 1: Antispasi jika database karyawan di Google Sheets masih kosong
     if "Nama Karyawan" in st.session_state.karyawan.columns and not st.session_state.karyawan.empty:
         list_karyawan_payroll = st.session_state.karyawan["Nama Karyawan"].tolist()
     else:
@@ -271,14 +271,12 @@ elif menu == "Payroll & Penggajian":
     if not list_karyawan_payroll:
         st.warning("⚠️ Data karyawan belum tersedia di database Google Sheets. Silakan isi Master Data Karyawan terlebih dahulu.")
     else:
-        # PERBAIKAN 2: Memastikan form dan st.form_submit_button terstruktur dengan benar
         with st.form("form_payroll", clear_on_submit=True):
             tgl_bayar = st.date_input("Tanggal Payroll", datetime.date.today())
             bulan_pilih = st.selectbox("Periode Pembayaran", ["Januari 2026", "Februari 2026", "Maret 2026", "April 2026", "Mei 2026", "Juni 2026", "Juli 2026", "Agustus 2026", "September 2026", "Oktober 2026", "November 2026", "Desember 2026"])
             karyawan_pilih = st.selectbox("Pilih Karyawan", list_karyawan_payroll)
             hari_kerja_sebulan = st.number_input("Target Hari Kerja", min_value=1, value=25)
             
-            # Hitung rekap absensi secara otomatis
             if not st.session_state.absensi.empty and "Nama Karyawan" in st.session_state.absensi.columns:
                 db_absen = st.session_state.absensi[(st.session_state.absensi["Nama Karyawan"] == karyawan_pilih) & (st.session_state.absensi["Bulan/Tahun"] == bulan_pilih) & (st.session_state.absensi["Status Kehadiran"] == "Hadir")]
                 total_masuk = len(db_absen)
@@ -287,7 +285,6 @@ elif menu == "Payroll & Penggajian":
                 
             st.info(f"ℹ️ **Kehadiran Berdasarkan Absen GPS:** {total_masuk} Hari")
             
-            # Tombol submit WAJIB berada di dalam blok "with st.form"
             tombol_payroll = st.form_submit_button("Otorisasi & Cairkan Gaji")
             
             if tombol_payroll:
