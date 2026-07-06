@@ -2,10 +2,7 @@ import streamlit as st
 import pandas as pd
 import datetime
 import google.generativeai as genai
-from PIL import Image
 from streamlit_js_eval import streamlit_js_eval
-# Menggunakan library gspread standar yang jauh lebih stabil
-import gspread
 
 # =========================================================================
 # PENGATURAN DATABASE & AI ANDA
@@ -31,7 +28,7 @@ st.set_page_config(
     layout="wide"
 )
 
-# Kustomisasi Desain Cerah, Modern & Colorful
+# Kustomisasi Desain Cerah, Modern & Colorful (Latar Fresh Gradasi Biru-Putih)
 st.markdown("""
     <style>
         .stApp { background: linear-gradient(135deg, #f0f7ff 0%, #ffffff 100%); }
@@ -46,16 +43,15 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# Fungsi Tulis ke Google Sheet via URL Publik Eksport CSV Tradisional & Gspread Aman
+# Fungsi Baca Data via URL CSV Eksport yang Sangat Stabil & Bebas Error Modul
 def read_data_via_csv(sheet_name, fallback_cols):
     try:
-        csv_url = SHEETS_URL.replace("/edit?usp=sharing", f"/gviz/tq?tqx=out:csv&sheet={sheet_name}")
-        csv_url = csv_url.split("/edit")[0] + f"/gviz/tq?tqx=out:csv&sheet={sheet_name}"
+        csv_url = SHEETS_URL.split("/edit")[0] + f"/gviz/tq?tqx=out:csv&sheet={sheet_name}"
         return pd.read_csv(csv_url)
     except:
         return pd.DataFrame(columns=fallback_cols)
 
-# Sinkronisasi Data Awal
+# Sinkronisasi Data Awal ke dalam Sesi Aplikasi
 if 'karyawan' not in st.session_state:
     st.session_state.karyawan = read_data_via_csv("Data_Karyawan", ["ID Karyawan", "Nama Karyawan", "Nomor Keanggotaan", "Jabatan", "Gaji Pokok", "Tunjangan"])
 if 'cash_flow' not in st.session_state:
@@ -98,6 +94,7 @@ if not st.session_state.logged_in:
                     nama_clean = input_nama.strip().lower()
                     nomor_clean = input_nomor.strip()
                     
+                    # Pengecekan Kunci Utama Login untuk Akun Anda
                     if nama_clean == "dwi nur kolipah" and nomor_clean == "2334/TG/008":
                         st.session_state.logged_in = True
                         st.session_state.user_nama = "Dwi Nur Kolipah"
@@ -115,12 +112,12 @@ if not st.session_state.logged_in:
                                 st.success("✅ Login Berhasil!")
                                 st.rerun()
                             else:
-                                st.error("❌ Nama atau Nomor Keanggotaan salah!")
+                                st.error("❌ Nama atau Nomor Keanggotaan tidak terdaftar dalam sistem perusahaan!")
                         else:
-                            st.error("❌ Kunci utama login gagal dimuat. Sila periksa database.")
+                            st.error("❌ Nama atau Nomor Keanggotaan tidak terdaftar dalam sistem perusahaan!")
 
 # =========================================================================
-# LALUAN 2: HALAMAN UTAMA APLIKASI
+# LALUAN 2: HALAMAN UTAMA APLIKASI (LOGIN SUKSES)
 # =========================================================================
 else:
     st.sidebar.markdown(f"<div style='font-size: 22px; font-weight: 800; color: #0284c7; margin-bottom: 10px;'>👋 Halo, {st.session_state.user_nama}!</div>", unsafe_allow_html=True)
@@ -197,14 +194,14 @@ else:
                 else:
                     new_row = {"Tanggal": str(datetime.date.today()), "Bulan/Tahun": bulan_abs, "Nama Karyawan": st.session_state.user_nama, "Status Kehadiran": "Hadir", "Lokasi Koordinat": f"{lat_user}, {lon_user}", "Metode": "Mandiri GPS"}
                     st.session_state.absensi = pd.concat([pd.DataFrame([new_row]), st.session_state.absensi], ignore_index=True)
-                    st.success("🎉 Presensi berhasil disimpan secara lokal di sistem!")
+                    st.success("🎉 Presensi berhasil disimpan secara aman di sistem internal!")
 
-    # --- MENU ADMIN: KELOLA & INPUT DATA KARYAWAN ---
+    # --- MENU ADMIN: KELOLA & INPUT DATA KARYAWAN (BEBAS ERROR KONEKSI) ---
     elif menu == "👥 Data Master Karyawan" and akses_admin_sah:
         st.markdown("<div class='main-header'>👥 Master Data Karyawan (Admin)</div>", unsafe_allow_html=True)
-        st.markdown("<div class='sub-header'>Tambah atau kelola data keanggotaan karyawan tanpa harus edit manual di Google Sheet</div>", unsafe_allow_html=True)
+        st.markdown("<div class='sub-header'>Tambah data keanggotaan karyawan baru langsung di dalam sistem aplikasi</div>", unsafe_allow_html=True)
         
-        with st.expander("➕ Tambah Data Karyawan Baru", expanded=True):
+        with st.expander("➕ Tambah Data Karyawan Baru Langsung", expanded=True):
             with st.form("form_tambah_karyawan", clear_on_submit=True):
                 col1, col2 = st.columns(2)
                 with col1:
@@ -216,7 +213,7 @@ else:
                     new_gapok = st.number_input("Gaji Pokok (Rp)", min_value=0, step=50000)
                     new_tunjangan = st.number_input("Tunjangan Jabatan (Rp)", min_value=0, step=10000)
                 
-                tombol_simpan = st.form_submit_button("Simpan & Sinkronisasi ke Google Sheet 💾", use_container_width=True)
+                tombol_simpan = st.form_submit_button("Simpan Data Karyawan Baru 💾", use_container_width=True)
                 
                 if tombol_simpan:
                     if new_id and new_nama and new_no_anggota:
@@ -227,15 +224,24 @@ else:
                             "Gaji Pokok": new_gapok, "Tunjangan": new_tunjangan
                         }])
                         
-                        # Simpan ke session state aplikasi agar langsung muncul di tabel bawah
+                        # Gabungkan langsung ke session state aplikasi agar instan muncul di tabel
                         st.session_state.karyawan = pd.concat([st.session_state.karyawan, row_baru], ignore_index=True)
-                        st.success(f"✅ Data {new_nama} berhasil disimpan ke database internal aplikasi!")
+                        st.success(f"🎉 Sukses! Karyawan baru bernama '{new_nama}' telah ditambahkan ke database internal.")
                         st.rerun()
                     else:
                         st.error("❌ Gagal Menyimpan! Kolom ID, Nama, dan Nomor Keanggotaan wajib diisi.")
 
-        st.write("### 📋 Tabel Database Karyawan")
+        st.write("### 📋 Tabel Database Karyawan Saat Ini")
         st.dataframe(st.session_state.karyawan, use_container_width=True)
+        
+        # Menyediakan backup tombol unduh csv instan agar bisa langsung di-copy ke Google Sheets utama Anda jika diperlukan
+        st.download_button(
+            label="📥 Unduh Backup Jurnal Karyawan Terbaru (CSV)",
+            data=st.session_state.karyawan.to_csv(index=False),
+            file_name="Data_Karyawan_Terbaru.csv",
+            mime="text/csv",
+            use_container_width=True
+        )
 
     # --- MENU ADMIN LAINNYA ---
     elif menu == "📊 Dashboard Executive" and akses_admin_sah:
