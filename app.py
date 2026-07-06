@@ -43,13 +43,13 @@ else:
 if "daftar_lokasi_klien" not in st.session_state:
     st.session_state.daftar_lokasi_klien = {
         "PT Tangguh Cahaya Pratama (Pusat Kalisari)": (-6.3355, 106.8620, 8),
-        "RSGM FKG Usakti": (-6.1668, 106.7901, 12),  # Lokasi kedua (Shift 12 Jam)
+        "RSGM FKG Usakti": (-6.1668, 106.7901, 12),  
         "Kantor Klien A (Contoh Sudirman - Shift 12H)": (-6.2146, 106.8215, 12),
         "Kantor Klien B (Contoh Thamrin - Shift 8H)": (-6.1953, 106.8231, 8),
         "Kantor Klien C (Contoh Kuningan - Shift 10H)": (-6.2242, 106.8294, 10)
     }
 
-# KUSTOMISASI CSS HIGH-CONTRAST (ANTI KOTAK INPUT HITAM / TULISAN TENGGELAM)
+# KUSTOMISASI CSS FIXED (KOTAK INPUT DIJAMIN PUTIH BERSIH)
 st.markdown("""
     <style>
         .stApp { background-color: #f8fafc !important; }
@@ -57,9 +57,18 @@ st.markdown("""
         [data-testid="stSidebar"] .stRadio p { color: #facc15 !important; font-weight: 800 !important; font-size: 16px !important; text-shadow: 1px 1px 2px #000000 !important; }
         [data-testid="stSidebar"] label p { color: #ffffff !important; font-weight: 700 !important; font-size: 15px !important; }
         [data-testid="stSidebar"] .stMarkdown p { color: #ffffff !important; font-weight: bold !important; }
-        input[type="text"], input[type="number"], input[type="password"], textarea { background-color: #ffffff !important; color: #0f172a !important; border: 2px solid #94a3b8 !important; border-radius: 6px !important; font-weight: 600 !important; }
+        
+        /* Perbaikan Kolom Input Teks dan Angka */
+        input[type="text"], input[type="number"], input[type="password"], textarea { 
+            background-color: #ffffff !important; 
+            color: #0f172a !important; 
+            border: 2px solid #94a3b8 !important; 
+            border-radius: 6px !important; 
+            font-weight: 600 !important; 
+        }
         div[data-baseweb="input"] { background-color: #ffffff !important; color: #0f172a !important; }
         div[data-baseweb="select"] { background-color: #ffffff !important; color: #0f172a !important; }
+        
         label p { color: #1e293b !important; font-weight: 700 !important; font-size: 15px !important; }
         .main-header { font-size: 34px; font-weight: 900; color: #1e3a8a !important; margin-bottom: 5px; }
         .sub-header { font-size: 16px; color: #475569 !important; font-weight: 600; margin-bottom: 25px; }
@@ -219,7 +228,6 @@ else:
             st.write(f"Nama Karyawan: **{st.session_state.user_nama}**")
             bulan_abs = st.selectbox("Periode Bulan Buku:", ["Juli 2026", "Agustus 2026", "September 2026"])
             
-            # Mendeteksi Lokasi & Membaca Durasi Shift
             lokasi_terdeteksi = None
             durasi_shift_terdeteksi = 8 
             jarak_terdekat = float('inf')
@@ -234,16 +242,14 @@ else:
                     if jarak <= RADIUS_TOLERANSI_METER and jarak < jarak_terdekat:
                         jarak_terdekat = jarak
                         lokasi_terdeteksi = nama_kantor
-                        # Proteksi aman dari data cache/session lama browser
                         durasi_shift_terdeteksi = info_lokasi[2] if len(info_lokasi) > 2 else 8
             else:
                 lat_user, lon_user = None, None
-                st.warning("⚠️ Menunggu sensor GPS aktif...")
+                st.warning("⚠️ Menunggu sensor GPS aktif... Pastikan izin lokasi browser HP/Laptop Anda sudah diberikan.")
 
             waktu_sekarang = datetime.datetime.now()
             jam_masuk_str = waktu_sekarang.strftime("%H:%M:%S")
             
-            # Hitung jam pulang otomatis berdasarkan aturan shift lokasi terdeteksi
             waktu_pulang = waktu_sekarang + datetime.timedelta(hours=int(durasi_shift_terdeteksi))
             jam_pulang_str = waktu_pulang.strftime("%H:%M:%S")
             
@@ -253,9 +259,9 @@ else:
 
             if st.form_submit_button("Kirim Kehadiran Sekarang 🚀", use_container_width=True):
                 if not lokasi_user:
-                    st.error("❌ Gagal Absen! Sensor lokasi perangkat Anda belum aktif.")
+                    st.error("❌ Gagal Absen! Sensor lokasi perangkat Anda belum aktif atau izin GPS diblokir.")
                 elif lokasi_terdeteksi is None:
-                    st.error(f"❌ Gagal Absen! Anda berada di luar area resmi yang didaftarkan perusahaan.")
+                    st.error(f"❌ Gagal Absen! Anda berada di luar area resmi (Radius toleransi ketat: 20 meter).")
                 else:
                     new_row = {
                         "Tanggal": str(datetime.date.today()), 
@@ -302,7 +308,7 @@ else:
 
         st.dataframe(st.session_state.karyawan, use_container_width=True)
 
-    # 4. MENU ADMIN: KELOLA LOKASI KLIEN & KETENTUAN SHIFT JADWAL KERJA
+    # 4. MENU ADMIN: KELOLA LOKASI KLIEN
     elif menu == "📍 Kelola Lokasi Klien" and akses_admin_sah:
         st.markdown("<div class='main-header'>📍 Kelola & Atur Jadwal Shift Kantor Klien</div>", unsafe_allow_html=True)
         
@@ -318,7 +324,6 @@ else:
                 with col_shift:
                     durasi_shift_baru = st.number_input("Durasi Siklus Shift Kerja (Jam):", min_value=1, max_value=24, value=8, step=1)
                 
-                st.markdown("<p style='color: #64748b; font-size: 13px;'>💡 <i>Tips: Salin koordinat dengan klik kanan peta Google Maps. Atur durasi shift sesuai kontrak klien.</i></p>", unsafe_allow_html=True)
                 if st.form_submit_button("Simpan Koordinat & Jadwal Shift Kantor 💾", use_container_width=True):
                     if nama_kantor_baru.strip() == "":
                         st.error("❌ Nama kantor klien tidak boleh kosong!")
@@ -332,9 +337,7 @@ else:
         st.write("### 📋 Daftar Titik Lokasi Absensi & Shift Kerja Aktif")
         data_tabel_lokasi = []
         for n, k in st.session_state.daftar_lokasi_klien.items():
-            # Proteksi anti-error: jika data lama (panjangnya cuma 2), beri default 8 jam otomatis
             durasi_jam = k[2] if len(k) > 2 else 8
-            
             data_tabel_lokasi.append({
                 "Nama Kantor/Klien": n, 
                 "Latitude": k[0], 
