@@ -2,30 +2,43 @@ import streamlit as st
 import pandas as pd
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
+import json
 
-# 1. Konfigurasi Google Sheets (Gunakan metode Service Account agar lebih aman)
-# Pastikan file credentials.json ada di folder proyek Anda di GitHub
+# Setup Konfigurasi Google Sheets via Streamlit Secrets
 def get_gspread_client():
+    # Ambil creds dari Secrets (lihat cara pasang di bawah)
+    creds_dict = json.loads(st.secrets["gcp_service_account"])
     scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
-    creds = ServiceAccountCredentials.from_json_keyfile_name('credentials.json', scope)
+    creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
     return gspread.authorize(creds)
 
-# 2. Fungsi untuk membaca database dari Google Sheets
+# Fungsi Membaca Data
 @st.cache_data(ttl=60)
 def load_data(sheet_name):
     client = get_gspread_client()
-    sheet = client.open("Database_PT_Tangguh")
-    ws = sheet.worksheet(sheet_name)
+    spreadsheet = client.open("Database_PT_Tangguh")
+    ws = spreadsheet.worksheet(sheet_name)
     return pd.DataFrame(ws.get_all_records())
 
-# 3. Contoh Penggunaan di Menu (Sudah diperbaiki dari IndexError)
-st.title("✨ Portal PT Tangguh ✨")
-menu = st.sidebar.selectbox("Menu:", ["Absensi", "Kelola Lokasi Klien"])
+# Fungsi Menyimpan Data (Absensi)
+def save_absensi(data):
+    client = get_gspread_client()
+    spreadsheet = client.open("Database_PT_Tangguh")
+    ws = spreadsheet.worksheet("Absensi")
+    ws.append_row(data)
 
-if menu == "Kelola Lokasi Klien":
-    try:
-        # Membaca data dari tab 'LokasiKlien' (Pastikan tab ini ada di Sheet Anda)
-        df_lokasi = load_data("LokasiKlien") 
-        st.dataframe(df_lokasi)
-    except Exception as e:
-        st.error(f"Terjadi kesalahan: {e}. Pastikan tab 'LokasiKlien' ada di Google Sheets Anda.")
+# Tampilan Aplikasi
+st.title("✨ Portal PT Tangguh")
+menu = st.sidebar.selectbox("Menu:", ["Presensi GPS", "Lihat Absensi"])
+
+if menu == "Presensi GPS":
+    st.subheader("📍 Presensi Mandiri")
+    nama = st.text_input("Nama Lengkap:")
+    if st.button("Kirim Absensi"):
+        # Data contoh (ganti dengan koordinat asli nanti)
+        save_absensi(["6 Juli 2026", nama, "Hadir", "08:00", "17:00", "Kantor", "GPS"])
+        st.success("Data berhasil tersimpan!")
+
+elif menu == "Lihat Absensi":
+    st.subheader("📋 Log Absensi")
+    st.dataframe(load_data("Absensi"))
