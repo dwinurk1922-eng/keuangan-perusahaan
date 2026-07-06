@@ -1,20 +1,23 @@
 import streamlit as st
 import pandas as pd
 from streamlit_gsheets import GSheetsConnection
-from streamlit_js_eval import streamlit_js_eval
 
-# KONFIGURASI
+# 1. KONFIGURASI HALAMAN
 st.set_page_config(page_title="Portal PT Tangguh", layout="wide")
 st.title("✨ Portal PT Tangguh Cahaya Pratama")
 
-# Koneksi ke Google Sheets (Pastikan Sheet sudah di-Share "Anyone with the link")
+# 2. KONEKSI KE GOOGLE SHEETS
 conn = st.connection("gsheets", type=GSheetsConnection)
-URL = "https://docs.google.com/spreadsheets/d/URL_GOOGLE_SHEET_ANDA_DI_SINI/edit"
+URL = "https://docs.google.com/spreadsheets/d/1fUFRm_NGfMIz2alyJLuJSobuZk34rph3q-ahsO2bMLA/edit?usp=sharing"
 
 def load_data(sheet_name):
-    return conn.read(spreadsheet=URL, worksheet=sheet_name)
+    try:
+        return conn.read(spreadsheet=URL, worksheet=sheet_name)
+    except Exception as e:
+        st.error(f"Gagal memuat sheet '{sheet_name}': {e}")
+        return pd.DataFrame()
 
-# MENU UTAMA
+# 3. LOGIKA MENU
 if 'logged_in' not in st.session_state: st.session_state.logged_in = False
 role = st.sidebar.radio("Masuk Sebagai:", ["Karyawan", "Admin"])
 
@@ -28,9 +31,7 @@ if role == "Admin":
         
         if menu == "Dashboard Absensi":
             st.subheader("📊 Rekapitulasi Absensi")
-            df = load_data("Absensi")
-            st.dataframe(df)
-            st.download_button("Unduh CSV", data=df.to_csv(index=False), file_name="absensi.csv")
+            st.dataframe(load_data("Absensi"))
             
         elif menu == "Laporan Keuangan":
             st.subheader("💰 Laporan Keuangan Bulanan")
@@ -42,19 +43,27 @@ if role == "Admin":
                 df_fil = df[df['Tanggal'].dt.month == bulan_idx]
                 st.dataframe(df_fil)
                 col1, col2 = st.columns(2)
-                col1.metric("Pemasukan", f"Rp {df_fil['Masuk'].sum():,.0f}")
-                col2.metric("Pengeluaran", f"Rp {df_fil['Keluar'].sum():,.0f}")
+                col1.metric("Pemasukan", f"Rp {df_fil['Masuk (Rp)'].sum():,.0f}")
+                col2.metric("Pengeluaran", f"Rp {df_fil['Keluar (Rp)'].sum():,.0f}")
                 st.download_button("Unduh Laporan", data=df_fil.to_csv(index=False), file_name=f"Laporan_{bulan}.csv")
+            else: st.info("Data keuangan belum tersedia.")
 
         elif menu == "Manajemen Kasbon":
             st.subheader("📑 Data Kasbon")
             st.dataframe(load_data("Kasbon"))
+            
+        elif menu == "Kelola Lokasi":
+            st.subheader("📍 Titik Koordinat")
+            st.dataframe(load_data("LokasiKlien"))
+            
+        elif menu == "Pengumuman":
+            st.subheader("📢 Pengumuman")
+            st.dataframe(load_data("Pengumuman"))
 
 # PANEL KARYAWAN
 elif role == "Karyawan":
     menu = st.sidebar.selectbox("Menu Karyawan:", ["📢 Pengumuman", "📍 Presensi GPS"])
     if menu == "📢 Pengumuman":
-        st.subheader("📢 Informasi Terbaru")
         st.dataframe(load_data("Pengumuman"))
     elif menu == "📍 Presensi GPS":
         st.subheader("📍 Presensi Mandiri")
