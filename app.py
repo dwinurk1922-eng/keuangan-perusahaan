@@ -5,7 +5,7 @@ import math
 from streamlit_js_eval import streamlit_js_eval
 
 # =========================================================================
-# PENGATURAN AWAL & DATABASE LOKAL (SINKRON OTOMATIS)
+# PENGATURAN UTAMA & KONFIGURASI DATABASE LOKAL
 # =========================================================================
 st.set_page_config(
     page_title="Portal PT Tangguh Cahaya Pratama", 
@@ -13,25 +13,40 @@ st.set_page_config(
     layout="wide"
 )
 
-# PIN untuk masuk ke menu Manajemen FinOps
-PIN_OTORISASI = "2026"
+# Password / PIN Otorisasi Admin Sesuai Permintaan
+PIN_OTORISASI = "KOLIP_CANTIK_0987654321"
 RADIUS_TOLERANSI_METER = 20.0 
 
-# Inisialisasi Database Pengumuman Global di Session State
+# Fungsi Generator Waktu Indonesia Real-time
+def dapatkan_waktu_indonesia():
+    hari_id = ["Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu", "Minggu"]
+    bulan_id = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"]
+    
+    sekarang = datetime.datetime.now()
+    nama_hari = hari_id[sekarang.weekday()]
+    tgl = sekarang.day
+    nama_bulan = bulan_id[sekarang.month - 1]
+    tahun = sekarang.year
+    jam_menit_detik = sekarang.strftime("%H:%M:%S")
+    
+    hari_tanggal_str = f"{nama_hari}, {tgl} {nama_bulan} {tahun}"
+    return hari_tanggal_str, jam_menit_detik
+
+# Inisialisasi Database Pengumuman
 if 'pengumuman' not in st.session_state:
     st.session_state.pengumuman = [
-        {"Tanggal": "2026-07-06", "Judul": "Sistem Multi-GPS Outsourcing Aktif", "Isi": "Sistem presensi kini mendukung deteksi otomatis koordinat di berbagai area kantor klien dengan batas radius kehadiran ketat 20 meter dari titik lokasi penugasan resmi."},
-        {"Tanggal": "2026-07-01", "Judul": "Kepatuhan Berkas Legalitas Finansial", "Isi": "Diingatkan kepada divisi operasional untuk mengunggah nota komersial secara berkala agar pengesahan ledger keuangan akhir bulan berjalan tepat waktu."}
+        {"Tanggal": "Senin, 6 Juli 2026", "Judul": "Sistem Multi-GPS Outsourcing Aktif", "Isi": "Sistem presensi kini mendukung deteksi otomatis koordinat di berbagai area kantor klien dengan batas radius kehadiran ketat 20 meter dari titik lokasi penugasan resmi."},
+        {"Tanggal": "Rabu, 1 Juli 2026", "Judul": "Kepatuhan Berkas Legalitas Finansial", "Isi": "Diingatkan kepada divisi operasional untuk mengunggah nota komersial secara berkala agar pengesahan ledger keuangan akhir bulan berjalan tepat waktu."}
     ]
 
 # Inisialisasi Database Absensi Terpusat
 if 'absensi' not in st.session_state:
     st.session_state.absensi = pd.DataFrame(columns=[
-        "Tanggal", "Bulan/Tahun", "Nama Karyawan", "Status Kehadiran", 
+        "Hari & Tanggal", "Nama Karyawan", "Status Kehadiran", 
         "Jam Masuk", "Jam Pulang", "Durasi Shift Kerja", "Lokasi Koordinat", "Metode"
     ])
 
-# Daftar Koordinat Kantor Resmi & Durasi Shift Kerja
+# Inisialisasi Database Koordinat Kantor Klien Resmi (Format: Lat, Lon, Jam Shift)
 if "daftar_lokasi_klien" not in st.session_state:
     st.session_state.daftar_lokasi_klien = {
         "PT Tangguh Cahaya Pratama (Pusat Kalisari)": (-6.3355, 106.8620, 8),
@@ -40,14 +55,13 @@ if "daftar_lokasi_klien" not in st.session_state:
         "Kantor Klien B (Thamrin)": (-6.1953, 106.8231, 8)
     }
 
-# Status Login Pengguna
 if 'logged_in' not in st.session_state:
     st.session_state.logged_in = False
 if 'user_nama' not in st.session_state:
     st.session_state.user_nama = ""
 
 # =========================================================================
-# KUSTOMISASI DESAIN TAMPILAN (WARNA KONTRAS TINGGI)
+# KUSTOMISASI CSS DESAIN (KOTAK INPUT DIJAMIN PUTIH BERSIH & TULISAN JELAS)
 # =========================================================================
 st.markdown("""
     <style>
@@ -56,15 +70,17 @@ st.markdown("""
         [data-testid="stSidebar"] .stRadio p { color: #facc15 !important; font-weight: 800 !important; font-size: 16px !important; }
         [data-testid="stSidebar"] label p { color: #ffffff !important; }
         
-        /* Box Input Dijamin Putih Bersih */
+        /* Memperbaiki Kotak Input yang Hitam Gelap Menjadi Putih Kontras */
         input[type="text"], input[type="number"], input[type="password"], textarea { 
             background-color: #ffffff !important; 
             color: #0f172a !important; 
             border: 2px solid #94a3b8 !important; 
             border-radius: 6px !important; 
+            font-weight: 600 !important;
         }
         div[data-baseweb="input"] { background-color: #ffffff !important; color: #0f172a !important; }
         div[data-baseweb="select"] { background-color: #ffffff !important; color: #0f172a !important; }
+        div[data-baseweb="popover"] { background-color: #ffffff !important; color: #0f172a !important; }
         
         .main-header { font-size: 32px; font-weight: 900; color: #1e3a8a !important; }
         .stButton>button { background: linear-gradient(45deg, #0284c7, #1e40af) !important; color: #ffffff !important; font-weight: 800 !important; }
@@ -115,7 +131,7 @@ else:
             akses_admin_sah = True
             st.sidebar.success("🔥 MODE ADMIN AKTIF")
         elif input_pin != "":
-            st.sidebar.error("❌ PIN Salah!")
+            st.sidebar.error("❌ PIN Otorisasi Salah!")
 
     # Penentuan Menu Pilihan Berdasarkan Akses Role
     if role_akses == "Manajemen FinOps (Otorisasi)" and akses_admin_sah:
@@ -127,6 +143,9 @@ else:
         st.session_state.logged_in = False
         st.session_state.user_nama = ""
         st.rerun()
+
+    # Mendapatkan Data Waktu Berjalan Secara Akurat (Real-time)
+    hari_tanggal_sekarang, jam_sekarang = dapatkan_waktu_indonesia()
 
     # --- 1. MENU KARYAWAN: PAPAN PENGUMUMAN ---
     if menu == "📢 Papan Pengumuman Resmi":
@@ -145,10 +164,10 @@ else:
         st.markdown("<div class='main-header'>📍 Presensi Mandiri Terdeteksi GPS</div>", unsafe_allow_html=True)
         
         # Pemicu Sensor Lokasi Perangkat Browser Karyawan
-        lokasi_user = streamlit_js_eval(data_container_name='geolocation', before_update_data=None, key='geo_karyawan')
+        lokasi_user = streamlit_js_eval(data_container_name='geolocation', before_update_data=None, key='geo_karyawan_baru')
         
         with st.form("form_absen"):
-            bulan_abs = st.selectbox("Periode Bulan Buku:", ["Juli 2026", "Agustus 2026"])
+            st.write(f"Waktu Saat Ini: **{hari_tanggal_sekarang} | Jam {jam_sekarang} WIB**")
             
             lokasi_terdeteksi = None
             durasi_shift_terdeteksi = 8 
@@ -158,7 +177,7 @@ else:
             if lokasi_user:
                 lat_user = lokasi_user['coords']['latitude']
                 lon_user = lokasi_user['coords']['longitude']
-                st.success(f"📍 GPS Mengunci Koordinat Anda: {lat_user}, {lon_user}")
+                st.success(f"📍 GPS Berhasil Mengunci Koordinat Anda: {lat_user}, {lon_user}")
                 
                 # Loop Otomatis Mencari Kantor Klien Terdekat yang Cocok di Radius 20 Meter
                 for nama_kantor, info_lokasi in st.session_state.daftar_lokasi_klien.items():
@@ -166,16 +185,17 @@ else:
                     if jarak <= RADIUS_TOLERANSI_METER and jarak < jarak_terdekat:
                         jarak_terdekat = jarak
                         lokasi_terdeteksi = nama_kantor
-                        durasi_shift_terdeteksi = info_lokasi[2]
+                        durasi_shift_terdeteksi = info_lokasi[2] if len(info_lokasi) > 2 else 8
             else:
                 st.warning("⚠️ Menunggu koordinat GPS aktif... Pastikan izin lokasi/GPS di browser HP Anda sudah di-klik 'IZINKAN' atau 'ALLOW'.")
 
-            waktu_sekarang = datetime.datetime.now()
-            jam_masuk_str = waktu_sekarang.strftime("%H:%M:%S")
-            jam_pulang_str = (waktu_sekarang + datetime.timedelta(hours=int(durasi_shift_terdeteksi))).strftime("%H:%M:%S")
+            # Perhitungan Jam Pulang Sesuai Durasi Shift Kerja Secara Otomatis
+            waktu_objek = datetime.datetime.now()
+            jam_masuk_str = jam_sekarang
+            jam_pulang_str = (waktu_objek + datetime.timedelta(hours=int(durasi_shift_terdeteksi))).strftime("%H:%M:%S")
             
             if lokasi_terdeteksi:
-                st.info(f"🎯 Area Kerja Valid: **{lokasi_terdeteksi}** | Shift Kerja: **{durasi_shift_terdeteksi} Jam** (Jarak: {jarak_terdekat:.1f}m)")
+                st.info(f"🎯 Area Kerja Valid: **{lokasi_terdeteksi}** | Aturan Shift: **{durasi_shift_terdeteksi} Jam** (Jarak: {jarak_terdekat:.1f}m)")
             
             if st.form_submit_button("Kirim Kehadiran Sekarang 🚀", use_container_width=True):
                 if not lokasi_user:
@@ -184,18 +204,17 @@ else:
                     st.error("❌ Gagal Absen! Anda berada di luar jangkauan area resmi (Batas ketat toleransi: 20 meter).")
                 else:
                     new_row = {
-                        "Tanggal": str(datetime.date.today()), 
-                        "Bulan/Tahun": bulan_abs, 
+                        "Hari & Tanggal": hari_tanggal_sekarang, 
                         "Nama Karyawan": st.session_state.user_nama, 
                         "Status Kehadiran": "Hadir", 
                         "Jam Masuk": jam_masuk_str,
                         "Jam Pulang": jam_pulang_str,
-                        "Durasi Shift Kerja": f"{durasi_shift_terdeteksi} Jam",
+                        "Durasi Shift Kerja": f"{durasi_shift_terdeteksi} Jam Kerja",
                         "Lokasi Koordinat": f"{lat_user}, {lon_user}", 
                         "Metode": f"GPS ({lokasi_terdeteksi})"
                     }
                     st.session_state.absensi = pd.concat([pd.DataFrame([new_row]), st.session_state.absensi], ignore_index=True)
-                    st.success(f"🎉 Absensi Anda BERHASIL dicatat langsung untuk hari ini!")
+                    st.success(f"🎉 Absensi Anda BERHASIL dicatat langsung pada {hari_tanggal_sekarang} pukul {jam_masuk_str} WIB!")
 
     # --- 3. MENU ADMIN: KELOLA PENGUMUMAN (LANGSUNG SINKRON) ---
     elif menu == "✍️ Kelola Pengumuman" and akses_admin_sah:
@@ -207,9 +226,8 @@ else:
             
             if st.form_submit_button("Terbitkan Ke Portal Karyawan Sekarang ✨", use_container_width=True):
                 if judul_p.strip() and isi_p.strip():
-                    # Menambahkan pengumuman langsung ke posisi paling atas daftar memori bersama
                     st.session_state.pengumuman.insert(0, {
-                        "Tanggal": str(datetime.date.today()), 
+                        "Tanggal": hari_tanggal_sekarang, 
                         "Judul": judul_p.strip(), 
                         "Isi": isi_p.strip()
                     })
@@ -225,12 +243,34 @@ else:
         else:
             st.info("Belum ada data absensi masuk untuk hari ini.")
 
-    # --- 5. MENU ADMIN: DETAIL AREA KOORDINAT KLIEN ---
+    # --- 5. MENU ADMIN: DETAIL AREA KOORDINAT KLIEN (PERBAIKAN INDEXERROR) ---
     elif menu == "📍 Kelola Lokasi Klien" and akses_admin_sah:
         st.markdown("<div class='main-header'>📍 Titik Koordinat Kantor Klien Resmi</div>", unsafe_allow_html=True)
+        
+        with st.expander("➕ Tambah Kantor Klien Baru", expanded=True):
+            with st.form("form_tambah_lokasi_klien", clear_on_submit=True):
+                nama_klien_baru = st.text_input("Nama Kantor Klien:")
+                c1, c2, c3 = st.columns(3)
+                with c1:
+                    lat_baru = st.number_input("Latitude:", format="%.6f", value=0.0)
+                with c2:
+                    lon_baru = st.number_input("Longitude:", format="%.6f", value=0.0)
+                with c3:
+                    shift_baru = st.number_input("Durasi Shift (Jam):", min_value=1, max_value=24, value=8)
+                
+                if st.form_submit_button("Simpan Lokasi Baru 💾"):
+                    if nama_klien_baru.strip() != "" and lat_baru != 0.0:
+                        st.session_state.daftar_lokasi_klien[nama_klien_baru.strip()] = (lat_baru, lon_baru, int(shift_baru))
+                        st.success("✅ Lokasi sukses didaftarkan!")
+                        st.rerun()
+
         data_tabel_lokasi = []
         for n, k in st.session_state.daftar_lokasi_klien.items():
+            durasi_jam = k[2] if len(k) > 2 else 8
             data_tabel_lokasi.append({
-                "Nama Kantor/Klien": n, "Latitude": k[0], "Longitude": k[1], "Ketentuan Shift Kerja": f"{k[2]} Jam Selesai"
+                "Nama Kantor/Klien": n, 
+                "Latitude": k[0], 
+                "Longitude": k[1], 
+                "Ketentuan Shift Kerja": f"{durasi_jam} Jam Selesai"
             })
         st.dataframe(pd.DataFrame(data_tabel_lokasi), use_container_width=True)
