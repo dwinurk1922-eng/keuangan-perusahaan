@@ -6,8 +6,8 @@ from PIL import Image
 
 # =========================================================================
 # PENGATURAN DATABASE & AI ANDA (ISI DI SINI)
-SHEETS_URL = "https://docs.google.com/spreadsheets/d/1VDqISHpjg8OWWPzl1NWOcc9V6j_o6Zw2/edit?usp=sharing&ouid=117398658595436431688&rtpof=true&sd=true"
-GEMINI_API_KEY = "AQ.Ab8RN6J6P_ygWhv1BVnR7cZDTwU4F3bhuTPKXHi1BB_ZzUikGg"
+SHEETS_URL = "MASUKKAN_LINK_GOOGLE_SHEETS_ANDA_DISINI"
+GEMINI_API_KEY = "MASUKKAN_API_KEY_GEMINI_ANDA_DISINI"
 # =========================================================================
 
 # Konfigurasi AI Gemini
@@ -55,7 +55,7 @@ st.markdown("""
             color: #1E3A8A;
         }
     </style>
-""", unsafe_index=False)
+""", unsafe_allow_html=True)
 
 # Fungsi Baca Data dari Google Sheets
 @st.cache_data(ttl=10)
