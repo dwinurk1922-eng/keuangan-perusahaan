@@ -8,7 +8,7 @@ from streamlit_js_eval import streamlit_js_eval
 # =========================================================================
 # PENGATURAN DATABASE, AI, & MULTI-LOKASI KANTOR KLIEN (RADIUS 20 METER)
 # =========================================================================
-SHEETS_URL = "https://docs.google.com/spreadsheets/d/1VDqISHpjg8OWWPzl1NWOcc9V6j_o6Zw2/edit?usp=sharing&ouid=117398658595436431688&rtpof=true&sd=true"
+SHEETS_URL = "https://docs.google.com/spreadsheets/d/1VDqISHpjg8OWWPzl1NWOcc9V6j_o6Zw2/edit?usp=sharing"
 GEMINI_API_KEY = "AQ.Ab8RN6J6P_ygWhv1BVnR7cZDTwU4F3bhuTPKXHi1BB_ZzUikGg"
 
 if "PIN_OTORISASI" in st.secrets:
@@ -17,7 +17,6 @@ else:
     PIN_OTORISASI = "2026"
 
 # DAFTAR LOKASI ABSENSI (KANTOR PUSAT & SEMUA KANTOR KLIEN OUTSOURCING)
-# Anda bisa menambah titik baru di sini dengan format: "Nama Lokasi": (Latitude, Longitude)
 KANTOR_KLIEN = {
     "PT Tangguh Cahaya Pratama (Pusat Kalisari)": (-6.3355, 106.8620),
     "Kantor Klien A (Contoh Sudirman)": (-6.2146, 106.8215),
@@ -25,7 +24,7 @@ KANTOR_KLIEN = {
     "Kantor Klien C (Contoh Kuningan)": (-6.2242, 106.8294)
 }
 
-RADIUS_TOLERANSI_METER = 20.0 # Batas toleransi diperketat menjadi 20 meter sesuai permintaan
+RADIUS_TOLERANSI_METER = 20.0 
 # =========================================================================
 
 if GEMINI_API_KEY:
@@ -37,84 +36,119 @@ st.set_page_config(
     layout="wide"
 )
 
-# Kustomisasi Desain Cerah, Modern & Menu Sidebar Berwarna Kuning Kontras
+# KUSTOMISASI DESAIN ULTRA-KONTRAS & PREMIUM (ANTI-TENGGELAM)
 st.markdown("""
     <style>
+        /* Mengubah latar belakang halaman utama agar teks hitam terlihat sangat kontras */
         .stApp { 
-            background: linear-gradient(135deg, #f0f7ff 0%, #ffffff 100%); 
+            background: linear-gradient(135deg, #f8fafc 0%, #ffffff 100%); 
         }
+        
+        /* SIDEBAR: Menggunakan warna Biru Safir Gelap yang Solid & Tegas */
         [data-testid="stSidebar"] { 
-            background-color: #0284c7 !important; 
-            border-right: 2px solid #bae6fd; 
+            background-color: #0b4570 !important; 
+            border-right: 3px solid #0ea5e9; 
         }
+        
+        /* MENYALAKAN TULISAN MENU RADIO (SIDEBAR) MENJADI KUNING LEMON TAJAM */
         [data-testid="stSidebar"] .stRadio p {
-            color: #fef08a !important; 
-            font-weight: 700 !important; 
-            font-size: 15px !important; 
+            color: #fffb00 !important; 
+            font-weight: 800 !important; 
+            font-size: 16px !important; 
+            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8) !important;
+            letter-spacing: 0.3px;
+            margin-bottom: 2px;
         }
+        
+        /* MENGUBAH TULISAN JUDUL DROPDOWN / SELECTBOX DI SIDEBAR JADI PUTIH TEBAL */
         [data-testid="stSidebar"] label p {
             color: #ffffff !important; 
-            font-weight: bold !important;
+            font-weight: 800 !important;
+            font-size: 15px !important;
+            text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.9) !important;
         }
+        
+        /* Teks biasa atau petunjuk teks di dalam sidebar */
+        [data-testid="stSidebar"] .stMarkdown p {
+            color: #ffffff !important;
+            font-weight: 600 !important;
+            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5) !important;
+        }
+
+        /* Desain Header Utama Utama */
         .main-header { 
-            font-size: 34px; 
-            font-weight: 800; 
-            background: linear-gradient(45deg, #0284c7, #f59e0b); 
+            font-size: 36px; 
+            font-weight: 900; 
+            background: linear-gradient(45deg, #0b4570, #ea580c); 
             -webkit-background-clip: text; 
             -webkit-text-fill-color: transparent; 
             margin-bottom: 5px; 
+            letter-spacing: 0.5px;
         }
+        
         .sub-header { 
             font-size: 16px; 
-            color: #64748b; 
-            font-weight: 500; 
+            color: #475569; 
+            font-weight: 600; 
             margin-bottom: 25px; 
         }
+        
+        /* Kartu Finansial Dashboard */
         .metric-card-custom { 
             background: white; 
-            padding: 22px; 
-            border-radius: 12px; 
-            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05); 
-            border-top: 5px solid #0ea5e9; 
+            padding: 24px; 
+            border-radius: 14px; 
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.08); 
+            border-top: 6px solid #0284c7; 
         }
+        
+        /* Mengubah Desain Tombol Menjadi Berwarna Gradasi Tajam dan Jelas */
         .stButton>button { 
-            background: linear-gradient(45deg, #38bdf8, #0284c7) !important; 
-            color: white !important; 
+            background: linear-gradient(45deg, #0ea5e9, #0284c7) !important; 
+            color: #ffffff !important; 
             border: none !important; 
             border-radius: 8px !important; 
-            font-weight: bold !important; 
-            transition: all 0.3s ease; 
+            font-weight: 800 !important; 
+            font-size: 15px !important;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1) !important;
+            transition: all 0.2s ease; 
         }
+        
         .stButton>button:hover { 
             transform: translateY(-2px); 
-            box-shadow: 0 4px 12px rgba(2, 132, 199, 0.3); 
+            box-shadow: 0 10px 15px -3px rgba(2, 132, 199, 0.4) !important; 
         }
+        
+        /* Penanda Status Badge */
         .badge-admin { 
-            background-color: #f43f5e; 
-            color: white; 
-            padding: 6px 12px; 
+            background-color: #e11d48; 
+            color: #ffffff !important; 
+            padding: 8px 16px; 
             border-radius: 20px; 
-            font-size: 12px; 
-            font-weight: bold; 
+            font-size: 13px; 
+            font-weight: 900; 
             display: inline-block; 
             text-align: center; 
+            box-shadow: 0 4px 6px rgba(0,0,0,0.15);
         }
+        
         .badge-karyawan { 
-            background-color: #10b981; 
-            color: white; 
-            padding: 6px 12px; 
+            background-color: #16a34a; 
+            color: #ffffff !important; 
+            padding: 8px 16px; 
             border-radius: 20px; 
-            font-size: 12px; 
-            font-weight: bold; 
+            font-size: 13px; 
+            font-weight: 900; 
             display: inline-block; 
             text-align: center; 
+            box-shadow: 0 4px 6px rgba(0,0,0,0.15);
         }
     </style>
 """, unsafe_allow_html=True)
 
-# Fungsi Hitung Jarak Akurat Formula Haversine (Menghasilkan satuan Meter)
+# Fungsi Hitung Jarak Akurat Formula Haversine
 def hitung_jarak_meter(lat1, lon1, lat2, lon2):
-    R = 6371000.0 # Jari-jari bumi dalam satuan meter
+    R = 6371000.0 
     phi1 = math.radians(lat1)
     phi2 = math.radians(lat2)
     delta_phi = math.radians(lat2 - lat1)
@@ -124,7 +158,7 @@ def hitung_jarak_meter(lat1, lon1, lat2, lon2):
     c = 2.0 * math.atan2(math.sqrt(a), math.sqrt(1.0 - a))
     return R * c
 
-# Fungsi Baca Data via URL CSV Eksport yang Sangat Stabil
+# Fungsi Baca Data via URL CSV Eksport
 def read_data_via_csv(sheet_name, fallback_cols):
     try:
         csv_url = SHEETS_URL.split("/edit")[0] + f"/gviz/tq?tqx=out:csv&sheet={sheet_name}"
@@ -132,7 +166,7 @@ def read_data_via_csv(sheet_name, fallback_cols):
     except:
         return pd.DataFrame(columns=fallback_cols)
 
-# Sinkronisasi Data Awal ke dalam Sesi Aplikasi
+# Sinkronisasi Data Awal
 if 'karyawan' not in st.session_state:
     st.session_state.karyawan = read_data_via_csv("Data_Karyawan", ["ID Karyawan", "Nama Karyawan", "Nomor Keanggotaan", "Jabatan", "Gaji Pokok", "Tunjangan"])
 if 'cash_flow' not in st.session_state:
@@ -164,7 +198,7 @@ if not st.session_state.logged_in:
         
         with st.columns([1, 2, 1])[1]:
             with st.form("form_login_karyawan"):
-                st.markdown("<h3 style='color: #0284c7; text-align: center;'>🔐 Masuk ke Sistem</h3>", unsafe_allow_html=True)
+                st.markdown("<h3 style='color: #0b4570; text-align: center;'>🔐 Masuk ke Sistem</h3>", unsafe_allow_html=True)
                 input_nama = st.text_input("Nama Lengkap Karyawan:")
                 input_nomor = st.text_input("Nomor Keanggotaan / ID:", type="password")
                 
@@ -200,7 +234,7 @@ if not st.session_state.logged_in:
 # LALUAN 2: HALAMAN UTAMA APLIKASI (LOGIN SUKSES)
 # =========================================================================
 else:
-    st.sidebar.markdown(f"<div style='font-size: 22px; font-weight: 800; color: #ffffff; margin-bottom: 10px;'>👋 Halo, {st.session_state.user_nama}!</div>", unsafe_allow_html=True)
+    st.sidebar.markdown(f"<div style='font-size: 22px; font-weight: 800; color: #ffffff; text-shadow: 1px 1px 3px #000; margin-bottom: 10px;'>👋 Halo, {st.session_state.user_nama}!</div>", unsafe_allow_html=True)
     role_akses = st.sidebar.selectbox("Pilih Hak Akses Sistem:", ["Portal Karyawan (Umum)", "Manajemen FinOps (Otorisasi)"])
 
     akses_admin_sah = False
@@ -208,16 +242,17 @@ else:
         input_pin = st.sidebar.text_input("⚡ Masukkan PIN Otorisasi:", type="password")
         if input_pin == PIN_OTORISASI:
             akses_admin_sah = True
-            st.sidebar.markdown("<center><span class='badge-admin'>🔥 MODE ADMIN AKTIF</span></center>", unsafe_allow_html=True)
+            st.sidebar.markdown("<center style='margin: 10px 0;'><span class='badge-admin'>🔥 MODE ADMIN AKTIF</span></center>", unsafe_allow_html=True)
         elif input_pin != "":
             st.sidebar.error("❌ PIN Otorisasi Salah!")
     else:
-        st.sidebar.markdown("<center><span class='badge-karyawan'>🍃 PORTAL KARYAWAN</span></center>", unsafe_allow_html=True)
+        st.sidebar.markdown("<center style='margin: 10px 0;'><span class='badge-karyawan'>🍃 PORTAL KARYAWAN</span></center>", unsafe_allow_html=True)
 
     st.sidebar.markdown("<br>", unsafe_allow_html=True)
 
     if role_akses == "Manajemen FinOps (Otorisasi)" and akses_admin_sah:
-        st.sidebar.markdown("<div style='background-color: #fff; padding: 10px; border-radius: 8px; border-left: 4px solid #f59e0b;'>⭐ <b>Finance Manager:</b><br>Dwi Nur Kolipah, S.H.</div>", unsafe_allow_html=True)
+        st.sidebar.markdown("<div style='background-color: #ffffff; padding: 12px; border-radius: 8px; border-left: 5px solid #ea580c; color: #1e293b !important; font-weight: bold; box-shadow: 0 4px 6px rgba(0,0,0,0.15);'>⭐ <b>Finance Manager:</b><br><span style='color: #0b4570;'>Dwi Nur Kolipah, S.H.</span></div>", unsafe_allow_html=True)
+        st.sidebar.markdown("<br>", unsafe_allow_html=True)
         menu = st.sidebar.radio("Pilih Modul FinOps (Admin):", [
             "📊 Dashboard Executive", 
             "💸 Manajemen Cash Flow (Ada AI)", 
@@ -243,7 +278,7 @@ else:
         st.markdown("<div class='main-header'>📢 Papan Pengumuman Internal Resmi</div>", unsafe_allow_html=True)
         for p in st.session_state.pengumuman:
             st.markdown(f"""
-                <div style='background: white; padding: 20px; border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.02); border-left: 5px solid #f59e0b; margin-bottom: 15px;'>
+                <div style='background: white; padding: 20px; border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.02); border-left: 5px solid #ea580c; margin-bottom: 15px;'>
                     <h4 style='margin: 0; color: #1e293b;'>📌 {p['Judul']}</h4>
                     <p style='color: #64748b; font-size: 12px; margin: 5px 0 10px 0;'>📆 Diterbitkan pada: {p['Tanggal']}</p>
                     <p style='color: #334155; line-height: 1.6;'>{p['Isi']}</p>
@@ -253,7 +288,7 @@ else:
     # --- MENU KARYAWAN: ABSENSI MULTI-GPS DETEKSI OTOMATIS KANTOR KLIEN ---
     elif menu == "📍 Presensi Rutin Mandiri (GPS)":
         st.markdown("<div class='main-header'>📍 Sistem Presensi Multi-GPS Area Kerja Outsourcing</div>", unsafe_allow_html=True)
-        st.markdown(f"<div style='font-size:14px; color:#475569;'>Sistem akan mendeteksi penempatan penugasan Anda secara otomatis dalam batas jangkauan aman <b>{RADIUS_TOLERANSI_METER} meter</b>.</div>", unsafe_allow_html=True)
+        st.markdown(f"<div style='font-size:15px; color:#475569; font-weight: 500;'>Sistem akan mendeteksi penempatan penugasan Anda secara otomatis dalam batas jangkauan aman <b>{RADIUS_TOLERANSI_METER} meter</b>.</div>", unsafe_allow_html=True)
         
         lokasi_user = streamlit_js_eval(data_container_name='geolocation', before_update_data=None, key='geo')
         
@@ -269,7 +304,6 @@ else:
                 lon_user = lokasi_user['coords']['longitude']
                 st.success(f"📍 GPS Mengunci Koordinat Anda: {lat_user}, {lon_user}")
                 
-                # Memeriksa kecocokan koordinat dengan seluruh daftar kantor klien yang terdaftar
                 for nama_kantor, koordinat in KANTOR_KLIEN.items():
                     jarak = hitung_jarak_meter(lat_user, lon_user, koordinat[0], koordinat[1])
                     if jarak <= RADIUS_TOLERANSI_METER and jarak < jarak_terdekat:
@@ -335,7 +369,7 @@ else:
             use_container_width=True
         )
 
-    # --- MENU ADMIN LAINNYA (DASHBOARD, CASHFLOW, REKAP ABSENSI) ---
+    # --- MENU ADMIN LAINNYA ---
     elif menu == "📊 Dashboard Executive" and akses_admin_sah:
         st.markdown("<div class='main-header'>📊 Dashboard Utama & Posisi Keuangan (Admin)</div>", unsafe_allow_html=True)
         total_masuk = pd.to_numeric(st.session_state.cash_flow["Pendapatan (Kas Masuk)"], errors='coerce').fillna(0).sum()
@@ -343,9 +377,9 @@ else:
         laba = total_masuk - total_keluar
         
         col1, col2, col3 = st.columns(3)
-        with col1: st.markdown(f"<div class='metric-card-custom' style='border-top-color: #10b981;'><p style='color: #64748b; font-size:14px; font-weight:bold; margin:0;'>📈 CASH IN</p><h2 style='color:#10b981; margin:10px 0 0 0;'>Rp {total_masuk:,.0f}</h2></div>", unsafe_allow_html=True)
-        with col2: st.markdown(f"<div class='metric-card-custom' style='border-top-color: #f43f5e;'><p style='color: #64748b; font-size:14px; font-weight:bold; margin:0;'>📉 CASH OUT</p><h2 style='color:#f43f5e; margin:10px 0 0 0;'>Rp {total_keluar:,.0f}</h2></div>", unsafe_allow_html=True)
-        with col3: st.markdown(f"<div class='metric-card-custom' style='border-top-color: #0ea5e9;'><p style='color: #64748b; font-size:14px; font-weight:bold; margin:0;'>💰 NET PROFIT</p><h2 style='color:#0ea5e9; margin:10px 0 0 0;'>Rp {laba:,.0f}</h2></div>", unsafe_allow_html=True)
+        with col1: st.markdown(f"<div class='metric-card-custom' style='border-top-color: #16a34a;'><p style='color: #475569; font-size:14px; font-weight:bold; margin:0;'>📈 CASH IN</p><h2 style='color:#16a34a; margin:10px 0 0 0;'>Rp {total_masuk:,.0f}</h2></div>", unsafe_allow_html=True)
+        with col2: st.markdown(f"<div class='metric-card-custom' style='border-top-color: #e11d48;'><p style='color: #475569; font-size:14px; font-weight:bold; margin:0;'>📉 CASH OUT</p><h2 style='color:#e11d48; margin:10px 0 0 0;'>Rp {total_keluar:,.0f}</h2></div>", unsafe_allow_html=True)
+        with col3: st.markdown(f"<div class='metric-card-custom' style='border-top-color: #0284c7;'><p style='color: #475569; font-size:14px; font-weight:bold; margin:0;'>💰 NET PROFIT</p><h2 style='color:#0284c7; margin:10px 0 0 0;'>Rp {laba:,.0f}</h2></div>", unsafe_allow_html=True)
 
     elif menu == "💸 Manajemen Cash Flow (Ada AI)" and akses_admin_sah:
         st.markdown("<div class='main-header'>💸 Manajemen Arus Kas Korporat (Admin)</div>", unsafe_allow_html=True)
