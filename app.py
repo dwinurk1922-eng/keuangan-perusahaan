@@ -36,30 +36,30 @@ st.set_page_config(
     layout="wide"
 )
 
-# KUSTOMISASI CSS FORCED HIGH-CONTRAST (ANTI TEXT BURYING)
+# KUSTOMISASI CSS ANTI-TENGGELAM (MEMAKSA KOTAK INPUT BERWARNA PUTIH)
 st.markdown("""
     <style>
-        /* 1. LATAR BELAKANG HALAMAN UTAMA */
+        /* Latar Belakang Halaman Utama */
         .stApp { 
             background-color: #f8fafc !important; 
         }
         
-        /* 2. SIDEBAR PANEL: Dipaksa berwarna Biru Gelap Metalik */
+        /* Panel Sidebar */
         [data-testid="stSidebar"] { 
             background-color: #0f172a !important; 
             border-right: 3px solid #0284c7; 
         }
         
-        /* 3. TEKS DI DALAM SIDEBAR: Dipaksa berwarna Putih & Kuning Terang agar Kelihatan */
+        /* Teks di Dalam Sidebar */
         [data-testid="stSidebar"] .stRadio p {
-            color: #facc15 !important; /* Kuning Cerah */
+            color: #facc15 !important; 
             font-weight: 800 !important; 
             font-size: 16px !important; 
             text-shadow: 1px 1px 2px #000000 !important;
         }
         
         [data-testid="stSidebar"] label p {
-            color: #ffffff !important; /* Putih Bersih */
+            color: #ffffff !important; 
             font-weight: 700 !important;
             font-size: 15px !important;
         }
@@ -69,23 +69,34 @@ st.markdown("""
             font-weight: bold !important;
         }
 
-        /* 4. KOTAK INPUT (TEXT INPUT / NUMBER INPUT): Dipaksa Putih dengan Teks Hitam Pekat */
-        .stTextInput input, .stNumberInput input, .stSelectbox div[data-baseweb="select"] {
+        /* MEMAKSA KOTAK INPUT TETAP BERWARNA PUTIH DENGAN TEKS HITAM PEKAT */
+        input[type="text"], input[type="number"], input[type="password"], textarea {
             background-color: #ffffff !important;
             color: #0f172a !important;
-            border: 2px solid #cbd5e1 !important;
+            border: 2px solid #94a3b8 !important;
             border-radius: 6px !important;
             font-weight: 600 !important;
         }
         
-        /* Label di atas kotak input halaman utama */
+        /* Memperbaiki tampilan kontainer input Streamlit */
+        div[data-baseweb="input"] {
+            background-color: #ffffff !important;
+            color: #0f172a !important;
+        }
+        
+        div[data-baseweb="select"] {
+            background-color: #ffffff !important;
+            color: #0f172a !important;
+        }
+        
+        /* Label teks di atas kotak input */
         label p {
             color: #1e293b !important;
             font-weight: 700 !important;
             font-size: 15px !important;
         }
 
-        /* 5. GAYA HEADLINE UTAMA */
+        /* Judul Utama */
         .main-header { 
             font-size: 34px; 
             font-weight: 900; 
@@ -100,7 +111,7 @@ st.markdown("""
             margin-bottom: 25px; 
         }
         
-        /* 6. TOMBOL / BUTTONS */
+        /* Desain Tombol */
         .stButton>button { 
             background: linear-gradient(45deg, #0284c7, #1e40af) !important; 
             color: #ffffff !important; 
@@ -112,7 +123,6 @@ st.markdown("""
             box-shadow: 0 4px 6px rgba(0,0,0,0.1) !important;
         }
         
-        /* 7. BADGES STATUS */
         .badge-admin { 
             background-color: #dc2626 !important; 
             color: #ffffff !important; 
@@ -134,7 +144,7 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# Fungsi Hitung Jarak Akurat Formula Haversine
+# Fungsi Hitung Jarak Jangkauan GPS
 def hitung_jarak_meter(lat1, lon1, lat2, lon2):
     R = 6371000.0 
     phi1 = math.radians(lat1)
@@ -146,7 +156,7 @@ def hitung_jarak_meter(lat1, lon1, lat2, lon2):
     c = 2.0 * math.atan2(math.sqrt(a), math.sqrt(1.0 - a))
     return R * c
 
-# Fungsi Baca Data via URL CSV Eksport
+# Fungsi Baca Data Sheets via CSV
 def read_data_via_csv(sheet_name, fallback_cols):
     try:
         csv_url = SHEETS_URL.split("/edit")[0] + f"/gviz/tq?tqx=out:csv&sheet={sheet_name}"
@@ -154,7 +164,7 @@ def read_data_via_csv(sheet_name, fallback_cols):
     except:
         return pd.DataFrame(columns=fallback_cols)
 
-# Sinkronisasi Data Awal
+# Sinkronisasi State Awal
 if 'karyawan' not in st.session_state:
     st.session_state.karyawan = read_data_via_csv("Data_Karyawan", ["ID Karyawan", "Nama Karyawan", "Nomor Keanggotaan", "Jabatan", "Gaji Pokok", "Tunjangan"])
 if 'cash_flow' not in st.session_state:
@@ -176,7 +186,7 @@ if 'user_nama' not in st.session_state:
     st.session_state.user_nama = ""
 
 # =========================================================================
-# LALUAN 1: FORM LOGIN UTAMA
+# HALAMAN LOGIN UTAMA
 # =========================================================================
 if not st.session_state.logged_in:
     st.markdown("<br><br>", unsafe_allow_html=True)
@@ -219,7 +229,7 @@ if not st.session_state.logged_in:
                             st.error("❌ Nama atau Nomor Keanggotaan tidak cocok dengan database perusahaan!")
 
 # =========================================================================
-# LALUAN 2: HALAMAN UTAMA APLIKASI (LOGIN SUKSES)
+# HALAMAN PANEL SETELAH LOGIN UTAMA
 # =========================================================================
 else:
     st.sidebar.markdown(f"<div style='font-size: 20px; font-weight: 800; color: #ffffff; margin-bottom: 10px;'>👋 Halo, {st.session_state.user_nama}!</div>", unsafe_allow_html=True)
@@ -261,7 +271,7 @@ else:
         st.session_state.user_nama = ""
         st.rerun()
 
-    # --- MENU KARYAWAN: PENGUMUMAN ---
+    # 1. MENU KARYAWAN: PENGUMUMAN
     if menu == "📢 Papan Pengumuman Resmi":
         st.markdown("<div class='main-header'>📢 Papan Pengumuman Internal Resmi</div>", unsafe_allow_html=True)
         for p in st.session_state.pengumuman:
@@ -273,7 +283,7 @@ else:
                 </div>
             """, unsafe_allow_html=True)
 
-    # --- MENU KARYAWAN: ABSENSI ---
+    # 2. MENU KARYAWAN: ABSENSI GPS
     elif menu == "📍 Presensi Rutin Mandiri (GPS)":
         st.markdown("<div class='main-header'>📍 Sistem Presensi Multi-GPS Area Kerja Outsourcing</div>", unsafe_allow_html=True)
         st.markdown(f"<div style='font-size:15px; color:#475569; font-weight: 500;'>Sistem mendeteksi lokasi penugasan secara otomatis (Radius Aman: <b>{RADIUS_TOLERANSI_METER} meter</b>).</div>", unsafe_allow_html=True)
@@ -318,7 +328,7 @@ else:
                     st.session_state.absensi = pd.concat([pd.DataFrame([new_row]), st.session_state.absensi], ignore_index=True)
                     st.success(f"🎉 Presensi VALID di lokasi: {lokasi_terdeteksi}")
 
-    # --- MENU ADMIN: DATA MASTER KARYAWAN ---
+    # 3. MENU ADMIN: DATA MASTER KARYAWAN
     elif menu == "👥 Data Master Karyawan" and akses_admin_sah:
         st.markdown("<div class='main-header'>👥 Master Data Karyawan (Admin)</div>", unsafe_allow_html=True)
         
@@ -350,15 +360,33 @@ else:
         st.write("### 📋 Tabel Database Karyawan Saat Ini")
         st.dataframe(st.session_state.karyawan, use_container_width=True)
 
-    # --- MENU ADMIN LAINNYA ---
+    # 4. MENU ADMIN: EXECUTIVE DASHBOARD
     elif menu == "📊 Dashboard Executive" and akses_admin_sah:
         st.markdown("<div class='main-header'>📊 Dashboard Keuangan</div>", unsafe_allow_html=True)
-        st.write("Statistik keuangan perusahaan terkini.")
+        st.write("Statistik keuangan arus kas korporat.")
 
+    # 5. MENU ADMIN: CASH FLOW
     elif menu == "💸 Manajemen Cash Flow (Ada AI)" and akses_admin_sah:
         st.markdown("<div class='main-header'>💸 Arus Kas Korporat</div>", unsafe_allow_html=True)
         st.dataframe(st.session_state.cash_flow, use_container_width=True)
 
+    # 6. MENU ADMIN: ABSENSI TERPUSAT
     elif menu == "📋 Absensi Terpusat (Rekap)" and akses_admin_sah:
         st.markdown("<div class='main-header'>📋 Log Database Absensi</div>", unsafe_allow_html=True)
-        st.dataframe(st.session_state.
+        st.dataframe(st.session_state.absensi, use_container_width=True)
+
+    # 7. MENU ADMIN: KASBON KARYAWAN
+    elif menu == "📑 Kasbon Karyawan" and akses_admin_sah:
+        st.markdown("<div class='main-header'>📑 Jurnal Kasbon Karyawan</div>", unsafe_allow_html=True)
+        st.dataframe(st.session_state.kasbon, use_container_width=True)
+
+    # 8. MENU ADMIN: KELOLA PENGUMUMAN
+    elif menu == "✍️ Kelola Pengumuman" and akses_admin_sah:
+        st.markdown("<div class='main-header'>✍️ Kelola Pengumuman Kantor</div>", unsafe_allow_html=True)
+        with st.form("form_buat_pengumuman", clear_on_submit=True):
+            judul_p = st.text_input("Judul Pengumuman Baru")
+            isi_p = st.text_area("Isi Informasi")
+            if st.form_submit_button("Terbitkan Ke Portal Karyawan ✨"):
+                st.session_state.pengumuman.insert(0, {"Tanggal": str(datetime.date.today()), "Judul": judul_p, "Isi": isi_p})
+                st.success("Pengumuman disiarkan!")
+                st.rerun()
