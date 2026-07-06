@@ -28,121 +28,44 @@ st.set_page_config(
 )
 
 # =========================================================================
-# INISIALISASI STATE UTAMA & DINAMIS LOKASI KANTOR KLIEN
+# SISTEM ANTI-REFRESH (CEK URL QUERY PARAMS UNTUK AUTO LOGIN)
 # =========================================================================
+if "session" in st.query_params:
+    st.session_state.logged_in = True
+    st.session_state.user_nama = st.query_params["session"]
+else:
+    if 'logged_in' not in st.session_state:
+        st.session_state.logged_in = False
+    if 'user_nama' not in st.session_state:
+        st.session_state.user_nama = ""
+
+# INISIALISASI LOKASI KANTOR KLIEN (Format: (Lat, Lon, Durasi Jam Kerja Shift))
 if "daftar_lokasi_klien" not in st.session_state:
     st.session_state.daftar_lokasi_klien = {
-        "PT Tangguh Cahaya Pratama (Pusat Kalisari)": (-6.3355, 106.8620),
-        "Kantor Klien A (Contoh Sudirman)": (-6.2146, 106.8215),
-        "Kantor Klien B (Contoh Thamrin)": (-6.1953, 106.8231),
-        "Kantor Klien C (Contoh Kuningan)": (-6.2242, 106.8294)
+        "PT Tangguh Cahaya Pratama (Pusat Kalisari)": (-6.3355, 106.8620, 8),
+        "RSGM FKG Usakti": (-6.1668, 106.7901, 12),  # Lokasi kedua ditambahkan (Koordinat Grogol & Shift 12 Jam)
+        "Kantor Klien A (Contoh Sudirman - Shift 12H)": (-6.2146, 106.8215, 12),
+        "Kantor Klien B (Contoh Thamrin - Shift 8H)": (-6.1953, 106.8231, 8),
+        "Kantor Klien C (Contoh Kuningan - Shift 10H)": (-6.2242, 106.8294, 10)
     }
 
 # KUSTOMISASI CSS HIGH-CONTRAST (ANTI KOTAK INPUT HITAM / TULISAN TENGGELAM)
 st.markdown("""
     <style>
-        /* Latar Belakang Halaman Utama */
-        .stApp { 
-            background-color: #f8fafc !important; 
-        }
-        
-        /* Panel Sidebar */
-        [data-testid="stSidebar"] { 
-            background-color: #0f172a !important; 
-            border-right: 3px solid #0284c7; 
-        }
-        
-        /* Teks di Dalam Sidebar */
-        [data-testid="stSidebar"] .stRadio p {
-            color: #facc15 !important; 
-            font-weight: 800 !important; 
-            font-size: 16px !important; 
-            text-shadow: 1px 1px 2px #000000 !important;
-        }
-        
-        [data-testid="stSidebar"] label p {
-            color: #ffffff !important; 
-            font-weight: 700 !important;
-            font-size: 15px !important;
-        }
-        
-        [data-testid="stSidebar"] .stMarkdown p {
-            color: #ffffff !important;
-            font-weight: bold !important;
-        }
-
-        /* MEMAKSA KOTAK INPUT TETAP BERWARNA PUTIH DENGAN TEKS HITAM PEKAT */
-        input[type="text"], input[type="number"], input[type="password"], textarea {
-            background-color: #ffffff !important;
-            color: #0f172a !important;
-            border: 2px solid #94a3b8 !important;
-            border-radius: 6px !important;
-            font-weight: 600 !important;
-        }
-        
-        /* Memperbaiki tampilan kontainer komponen input Streamlit */
-        div[data-baseweb="input"] {
-            background-color: #ffffff !important;
-            color: #0f172a !important;
-        }
-        
-        div[data-baseweb="select"] {
-            background-color: #ffffff !important;
-            color: #0f172a !important;
-        }
-        
-        /* Label teks di atas kotak input */
-        label p {
-            color: #1e293b !important;
-            font-weight: 700 !important;
-            font-size: 15px !important;
-        }
-
-        /* Judul Utama */
-        .main-header { 
-            font-size: 34px; 
-            font-weight: 900; 
-            color: #1e3a8a !important;
-            margin-bottom: 5px; 
-        }
-        
-        .sub-header { 
-            font-size: 16px; 
-            color: #475569 !important; 
-            font-weight: 600; 
-            margin-bottom: 25px; 
-        }
-        
-        /* Desain Tombol */
-        .stButton>button { 
-            background: linear-gradient(45deg, #0284c7, #1e40af) !important; 
-            color: #ffffff !important; 
-            border: none !important; 
-            border-radius: 8px !important; 
-            font-weight: 800 !important; 
-            font-size: 15px !important;
-            padding: 10px 20px !important;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1) !important;
-        }
-        
-        .badge-admin { 
-            background-color: #dc2626 !important; 
-            color: #ffffff !important; 
-            padding: 6px 14px; 
-            border-radius: 20px; 
-            font-size: 12px; 
-            font-weight: 900; 
-            display: inline-block; 
-        }
-        .badge-karyawan { 
-            background-color: #16a34a !important; 
-            color: #ffffff !important; 
-            padding: 6px 14px; 
-            border-radius: 20px; 
-            font-size: 12px; 
-            font-weight: 900; 
-            display: inline-block; 
-        }
+        .stApp { background-color: #f8fafc !important; }
+        [data-testid="stSidebar"] { background-color: #0f172a !important; border-right: 3px solid #0284c7; }
+        [data-testid="stSidebar"] .stRadio p { color: #facc15 !important; font-weight: 800 !important; font-size: 16px !important; text-shadow: 1px 1px 2px #000000 !important; }
+        [data-testid="stSidebar"] label p { color: #ffffff !important; font-weight: 700 !important; font-size: 15px !important; }
+        [data-testid="stSidebar"] .stMarkdown p { color: #ffffff !important; font-weight: bold !important; }
+        input[type="text"], input[type="number"], input[type="password"], textarea { background-color: #ffffff !important; color: #0f172a !important; border: 2px solid #94a3b8 !important; border-radius: 6px !important; font-weight: 600 !important; }
+        div[data-baseweb="input"] { background-color: #ffffff !important; color: #0f172a !important; }
+        div[data-baseweb="select"] { background-color: #ffffff !important; color: #0f172a !important; }
+        label p { color: #1e293b !important; font-weight: 700 !important; font-size: 15px !important; }
+        .main-header { font-size: 34px; font-weight: 900; color: #1e3a8a !important; margin-bottom: 5px; }
+        .sub-header { font-size: 16px; color: #475569 !important; font-weight: 600; margin-bottom: 25px; }
+        .stButton>button { background: linear-gradient(45deg, #0284c7, #1e40af) !important; color: #ffffff !important; border: none !important; border-radius: 8px !important; font-weight: 800 !important; font-size: 15px !important; padding: 10px 20px !important; box-shadow: 0 4px 6px rgba(0,0,0,0.1) !important; }
+        .badge-admin { background-color: #dc2626 !important; color: #ffffff !important; padding: 6px 14px; border-radius: 20px; font-size: 12px; font-weight: 900; display: inline-block; }
+        .badge-karyawan { background-color: #16a34a !important; color: #ffffff !important; padding: 6px 14px; border-radius: 20px; font-size: 12px; font-weight: 900; display: inline-block; }
     </style>
 """, unsafe_allow_html=True)
 
@@ -153,7 +76,6 @@ def hitung_jarak_meter(lat1, lon1, lat2, lon2):
     phi2 = math.radians(lat2)
     delta_phi = math.radians(lat2 - lat1)
     delta_lambda = math.radians(lon2 - lon1)
-    
     a = math.sin(delta_phi / 2.0)**2 + math.cos(phi1) * math.cos(phi2) * math.sin(delta_lambda / 2.0)**2
     c = 2.0 * math.atan2(math.sqrt(a), math.sqrt(1.0 - a))
     return R * c
@@ -172,7 +94,7 @@ if 'karyawan' not in st.session_state:
 if 'cash_flow' not in st.session_state:
     st.session_state.cash_flow = read_data_via_csv("Cash_Flow", ["Tanggal", "Kategori", "Keterangan / Deskripsi", "Pendapatan (Kas Masuk)", "Pengeluaran (Kas Keluar)"])
 if 'absensi' not in st.session_state:
-    st.session_state.absensi = read_data_via_csv("Absensi", ["Tanggal", "Bulan/Tahun", "Nama Karyawan", "Status Kehadiran", "Lokasi Koordinat", "Metode"])
+    st.session_state.absensi = read_data_via_csv("Absensi", ["Tanggal", "Bulan/Tahun", "Nama Karyawan", "Status Kehadiran", "Jam Masuk", "Jam Pulang", "Durasi Shift Kerja", "Lokasi Koordinat", "Metode"])
 if 'kasbon' not in st.session_state:
     st.session_state.kasbon = read_data_via_csv("Kasbon_Karyawan", ["Tanggal", "Nama Karyawan", "Divisi / Bagian", "Jumlah Kasbon", "Status Pengembalian"])
 
@@ -181,11 +103,6 @@ if 'pengumuman' not in st.session_state:
         {"Tanggal": "2026-07-06", "Judul": "Sistem Multi-GPS Outsourcing Aktif", "Isi": "Sistem presensi kini mendukung deteksi otomatis koordinat di berbagai area kantor klien dengan batas radius kehadiran ketat 20 meter dari titik lokasi penugasan resmi."},
         {"Tanggal": "2026-07-01", "Judul": "Kepatuhan Berkas Legalitas Finansial", "Isi": "Diingatkan kepada divisi operasional untuk mengunggah nota komersial secara berkala agar pengesahan ledger keuangan akhir bulan berjalan tepat waktu."}
     ]
-
-if 'logged_in' not in st.session_state:
-    st.session_state.logged_in = False
-if 'user_nama' not in st.session_state:
-    st.session_state.user_nama = ""
 
 # =========================================================================
 # HALAMAN LOGIN UTAMA
@@ -209,26 +126,29 @@ if not st.session_state.logged_in:
                     nama_clean = input_nama.strip().lower()
                     nomor_clean = input_nomor.strip()
                     
+                    user_ditemukan = False
+                    nama_display = ""
+                    
                     if nama_clean == "dwi nur kolipah" and nomor_clean == "2334/TG/008":
-                        st.session_state.logged_in = True
-                        st.session_state.user_nama = "Dwi Nur Kolipah"
-                        st.success("✅ Login Berhasil! Membuka Portal...")
-                        st.rerun()
+                        user_ditemukan = True
+                        nama_display = "Dwi Nur Kolipah"
                     else:
                         df_k = st.session_state.karyawan
                         if not df_k.empty and "Nama Karyawan" in df_k.columns:
                             kolom_kunci = "Nomor Keanggotaan" if "Nomor Keanggotaan" in df_k.columns else "ID Karyawan"
                             valid_user = df_k[(df_k["Nama Karyawan"].str.lower() == nama_clean) & (df_k[kolom_kunci].astype(str) == nomor_clean)]
-                            
                             if not valid_user.empty:
-                                st.session_state.logged_in = True
-                                st.session_state.user_nama = valid_user.iloc[0]["Nama Karyawan"]
-                                st.success("✅ Login Berhasil!")
-                                st.rerun()
-                            else:
-                                st.error("❌ Nama atau Nomor Keanggotaan tidak cocok dengan database perusahaan!")
-                        else:
-                            st.error("❌ Nama atau Nomor Keanggotaan tidak cocok dengan database perusahaan!")
+                                user_ditemukan = True
+                                nama_display = valid_user.iloc[0]["Nama Karyawan"]
+                    
+                    if user_ditemukan:
+                        st.session_state.logged_in = True
+                        st.session_state.user_nama = nama_display
+                        st.query_params["session"] = nama_display
+                        st.success("✅ Login Berhasil! Membuka Portal...")
+                        st.rerun()
+                    else:
+                        st.error("❌ Nama atau Nomor Keanggotaan tidak cocok dengan database perusahaan!")
 
 # =========================================================================
 # HALAMAN PANEL SETELAH LOGIN UTAMA (DASHBOARD MULTI-ROLE)
@@ -269,9 +189,11 @@ else:
         ])
 
     st.sidebar.markdown("---")
+    
     if st.sidebar.button("🚪 Keluar / Logout", use_container_width=True):
         st.session_state.logged_in = False
         st.session_state.user_nama = ""
+        st.query_params.clear()
         st.rerun()
 
     # 1. MENU KARYAWAN: PENGUMUMAN
@@ -286,10 +208,10 @@ else:
                 </div>
             """, unsafe_allow_html=True)
 
-    # 2. MENU KARYAWAN: ABSENSI GPS (MEMBACA STATE DINAMIS LOKASI)
+    # 2. MENU KARYAWAN: ABSENSI GPS DENGAN ATURAN SHIFT UNIK PER LOKASI
     elif menu == "📍 Presensi Rutin Mandiri (GPS)":
         st.markdown("<div class='main-header'>📍 Sistem Presensi Multi-GPS Area Kerja Outsourcing</div>", unsafe_allow_html=True)
-        st.markdown(f"<div style='font-size:15px; color:#475569; font-weight: 500;'>Sistem mendeteksi lokasi penugasan secara otomatis (Radius Aman: <b>{RADIUS_TOLERANSI_METER} meter</b>).</div>", unsafe_allow_html=True)
+        st.markdown(f"<div style='font-size:15px; color:#475569; font-weight: 500;'>Sistem otomatis menyesuaikan ketentuan <b>Jadwal Shift Kerja</b> berdasarkan lokasi koordinat penugasan Anda.</div>", unsafe_allow_html=True)
         
         lokasi_user = streamlit_js_eval(data_container_name='geolocation', before_update_data=None, key='geo')
         
@@ -297,7 +219,9 @@ else:
             st.write(f"Nama Karyawan: **{st.session_state.user_nama}**")
             bulan_abs = st.selectbox("Periode Bulan Buku:", ["Juli 2026", "Agustus 2026", "September 2026"])
             
+            # Mendeteksi Lokasi & Membaca Durasi Shift
             lokasi_terdeteksi = None
+            durasi_shift_terdeteksi = 8 
             jarak_terdekat = float('inf')
             
             if lokasi_user:
@@ -305,32 +229,46 @@ else:
                 lon_user = lokasi_user['coords']['longitude']
                 st.success(f"📍 GPS Berhasil Mengunci Koordinat: {lat_user}, {lon_user}")
                 
-                # Membaca daftar lokasi secara dinamis dari session_state
-                for nama_kantor, koordinat in st.session_state.daftar_lokasi_klien.items():
-                    jarak = hitung_jarak_meter(lat_user, lon_user, koordinat[0], koordinat[1])
+                for nama_kantor, info_lokasi in st.session_state.daftar_lokasi_klien.items():
+                    jarak = hitung_jarak_meter(lat_user, lon_user, info_lokasi[0], info_lokasi[1])
                     if jarak <= RADIUS_TOLERANSI_METER and jarak < jarak_terdekat:
                         jarak_terdekat = jarak
                         lokasi_terdeteksi = nama_kantor
+                        durasi_shift_terdeteksi = info_lokasi[2]
             else:
                 lat_user, lon_user = None, None
                 st.warning("⚠️ Menunggu sensor GPS aktif...")
+
+            waktu_sekarang = datetime.datetime.now()
+            jam_masuk_str = waktu_sekarang.strftime("%H:%M:%S")
+            
+            # Hitung jam pulang otomatis berdasarkan aturan shift lokasi terdeteksi
+            waktu_pulang = waktu_sekarang + datetime.timedelta(hours=int(durasi_shift_terdeteksi))
+            jam_pulang_str = waktu_pulang.strftime("%H:%M:%S")
+            
+            if lokasi_terdeteksi:
+                st.info(f"📍 Area Terdeteksi: **{lokasi_terdeteksi}** | Aturan Shift Kerja Lokasi Ini: **{durasi_shift_terdeteksi} Jam**")
+            st.write(f"Jam Masuk Sekarang: **{jam_masuk_str} WIB** | Target Jam Selesai Kerja: **{jam_pulang_str} WIB**")
 
             if st.form_submit_button("Kirim Kehadiran Sekarang 🚀", use_container_width=True):
                 if not lokasi_user:
                     st.error("❌ Gagal Absen! Sensor lokasi perangkat Anda belum aktif.")
                 elif lokasi_terdeteksi is None:
-                    st.error(f"❌ Gagal Absen! Anda berada di luar area resmi yang didaftarkan.")
+                    st.error(f"❌ Gagal Absen! Anda berada di luar area resmi yang didaftarkan perusahaan.")
                 else:
                     new_row = {
                         "Tanggal": str(datetime.date.today()), 
                         "Bulan/Tahun": bulan_abs, 
                         "Nama Karyawan": st.session_state.user_nama, 
                         "Status Kehadiran": "Hadir", 
+                        "Jam Masuk": jam_masuk_str,
+                        "Jam Pulang": jam_pulang_str,
+                        "Durasi Shift Kerja": f"{durasi_shift_terdeteksi} Jam",
                         "Lokasi Koordinat": f"{lat_user}, {lon_user}", 
-                        "Metode": f"GPS ({lokasi_terdeteksi} - Jarak: {jarak_terdekat:.1f}m)"
+                        "Metode": f"GPS ({lokasi_terdeteksi} - Radius: {jarak_terdekat:.1f}m)"
                     }
                     st.session_state.absensi = pd.concat([pd.DataFrame([new_row]), st.session_state.absensi], ignore_index=True)
-                    st.success(f"🎉 Presensi VALID di lokasi: {lokasi_terdeteksi}")
+                    st.success(f"🎉 Presensi VALID! Tercatat di {lokasi_terdeteksi} (Shift {durasi_shift_terdeteksi} Jam).")
 
     # 3. MENU ADMIN: DATA MASTER KARYAWAN
     elif menu == "👥 Data Master Karyawan" and akses_admin_sah:
@@ -359,45 +297,47 @@ else:
                         st.success(f"🎉 Sukses! Karyawan '{new_nama}' ditambahkan.")
                         st.rerun()
                     else:
-                        st.error("❌ Kolom ID, Nama, dan Nomor Keanggotaan wajib diisi.")
+                        st.error("❌ Kolom ID, Nama, dan Nomor Keanggotaan wajib diisi Pejabat Admin.")
 
-        st.write("### 📋 Tabel Database Karyawan Saat Ini")
         st.dataframe(st.session_state.karyawan, use_container_width=True)
 
-    # 4. MENU ADMIN: KELOLA LOKASI KLIEN (FITUR BARU INPUT DINAMIS)
+    # 4. MENU ADMIN: KELOLA LOKASI KLIEN & KETENTUAN SHIFT JADWAL KERJA
     elif menu == "📍 Kelola Lokasi Klien" and akses_admin_sah:
-        st.markdown("<div class='main-header'>📍 Kelola & Tambah Lokasi Kantor Klien</div>", unsafe_allow_html=True)
+        st.markdown("<div class='main-header'>📍 Kelola & Atur Jadwal Shift Kantor Klien</div>", unsafe_allow_html=True)
         
-        with st.expander("➕ Tambah Titik Koordinat Kantor Baru", expanded=True):
+        with st.expander("➕ Tambah Titik Koordinat & Jadwal Shift Kantor Baru", expanded=True):
             with st.form("form_tambah_lokasi", clear_on_submit=True):
                 nama_kantor_baru = st.text_input("Nama Kantor Klien Baru:")
                 
-                col_lat, col_lon = st.columns(2)
+                col_lat, col_lon, col_shift = st.columns(3)
                 with col_lat:
                     latitude_baru = st.number_input("Latitude (Garis Lintang):", format="%.7f", value=0.0)
                 with col_lon:
                     longitude_baru = st.number_input("Longitude (Garis Bujur):", format="%.7f", value=0.0)
+                with col_shift:
+                    durasi_shift_baru = st.number_input("Durasi Siklus Shift Kerja (Jam):", min_value=1, max_value=24, value=8, step=1)
                 
-                st.markdown("<p style='color: #64748b; font-size: 13px;'>💡 <i>Tips: Anda bisa menyalin koordinat ini langsung dari Google Maps (klik kanan pada peta -> salin koordinat).</i></p>", unsafe_allow_html=True)
-                tombol_simpan_lokasi = st.form_submit_button("Simpan Koordinat Kantor 💾", use_container_width=True)
-                
-                if tombol_simpan_lokasi:
+                st.markdown("<p style='color: #64748b; font-size: 13px;'>💡 <i>Tips: Salin koordinat dengan klik kanan peta Google Maps. Atur durasi shift sesuai kontrak klien.</i></p>", unsafe_allow_html=True)
+                if st.form_submit_button("Simpan Koordinat & Jadwal Shift Kantor 💾", use_container_width=True):
                     if nama_kantor_baru.strip() == "":
                         st.error("❌ Nama kantor klien tidak boleh kosong!")
                     elif latitude_baru == 0.0 or longitude_baru == 0.0:
-                        st.error("❌ Titik koordinat Latitude dan Longitude harus diisi dengan benar!")
+                        st.error("❌ Koordinat GPS internal harus diisi dengan benar!")
                     else:
-                        st.session_state.daftar_lokasi_klien[nama_kantor_baru.strip()] = (latitude_baru, longitude_baru)
-                        st.success(f"🎉 Sukses! Kantor '{nama_kantor_baru}' berhasil didaftarkan ke sistem presensi.")
+                        st.session_state.daftar_lokasi_klien[nama_kantor_baru.strip()] = (latitude_baru, longitude_baru, int(durasi_shift_baru))
+                        st.success(f"🎉 Sukses! Kantor '{nama_kantor_baru}' terdaftar dengan Aturan Shift {durasi_shift_baru} Jam.")
                         st.rerun()
 
-        st.write("### 📋 Daftar Titik Lokasi Absensi Aktif")
+        st.write("### 📋 Daftar Titik Lokasi Absensi & Shift Kerja Aktif")
         data_tabel_lokasi = []
-        for nama, koor in st.session_state.daftar_lokasi_klien.items():
-            data_tabel_lokasi.append({"Nama Kantor/Klien": nama, "Latitude": koor[0], "Longitude": koor[1]})
-        
-        df_lokasi = pd.DataFrame(data_tabel_lokasi)
-        st.dataframe(df_lokasi, use_container_width=True)
+        for n, k in st.session_state.daftar_lokasi_klien.items():
+            data_tabel_lokasi.append({
+                "Nama Kantor/Klien": n, 
+                "Latitude": k[0], 
+                "Longitude": k[1], 
+                "Ketentuan Shift Kerja": f"{k[2]} Jam Selesai"
+            })
+        st.dataframe(pd.DataFrame(data_tabel_lokasi), use_container_width=True)
 
     # 5. MENU ADMIN: EXECUTIVE DASHBOARD
     elif menu == "📊 Dashboard Executive" and akses_admin_sah:
@@ -411,7 +351,7 @@ else:
 
     # 7. MENU ADMIN: ABSENSI TERPUSAT REKAP
     elif menu == "📋 Absensi Terpusat (Rekap)" and akses_admin_sah:
-        st.markdown("<div class='main-header'>📋 Log Database Absensi</div>", unsafe_allow_html=True)
+        st.markdown("<div class='main-header'>📋 Log Database Absensi (Rekap Multi-Shift)</div>", unsafe_allow_html=True)
         st.dataframe(st.session_state.absensi, use_container_width=True)
 
     # 8. MENU ADMIN: KASBON KARYAWAN
