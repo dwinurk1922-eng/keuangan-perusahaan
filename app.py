@@ -8,7 +8,7 @@ from streamlit_js_eval import streamlit_js_eval
 # =========================================================================
 # PENGATURAN DATABASE, AI, & MULTI-LOKASI KANTOR KLIEN (RADIUS 20 METER)
 # =========================================================================
-SHEETS_URL = "https://docs.google.com/spreadsheets/d/1VDqISHpjg8OWWPzl1NWOcc9V6j_o6Zw2/edit?usp=sharing"
+SHEETS_URL = "https://docs.google.com/spreadsheets/d/1VDqISHpjg8OWWPzl1NWOcc9V6j_o6Zw2/edit?usp=sharing&ouid=117398658595436431688&rtpof=true&sd=true"
 GEMINI_API_KEY = "AQ.Ab8RN6J6P_ygWhv1BVnR7cZDTwU4F3bhuTPKXHi1BB_ZzUikGg"
 
 if "PIN_OTORISASI" in st.secrets:
